@@ -87,7 +87,9 @@ function conditional(c, predicate){
 /* Each expert produces its own probability from past data only. */
 function expertProbs(a){
   if(a.length<MIN_TRAIN)return {};
-  const c=a.slice().reverse(), out={};
+  const full=a.slice().reverse();
+  const c=full.length>180 ? full.slice(full.length-180) : full;
+  const out={};
   const wins=[5,10,20,50,100,250].map(w=>rate(c.slice(Math.max(0,c.length-w))));
   out.recent={p:wins.reduce((s,p,i)=>s+p/[1,1.3,1.6,2.0,2.5,3][i],0)/wins.reduce((s,_,i)=>s+1/[1,1.3,1.6,2.0,2.5,3][i],0),n:Math.min(c.length,250)};
 
@@ -98,8 +100,10 @@ function expertProbs(a){
   out.interval=conditional(c,(k,x)=>ints[k]===curI);
   const sb=streakBefore(c);
   out.streak=conditional(c,(k,x)=>{
-    const s=streakBefore(x.slice(0,k));
-    return s.kind===sb.kind && Math.min(s.len,8)===Math.min(sb.len,8);
+    if(k<1)return false;
+    let kind=isTiers(x[k-1]), len=0;
+    for(let j=k-1;j>=0 && isTiers(x[j])===kind;j--)len++;
+    return kind===sb.kind && Math.min(len,8)===Math.min(sb.len,8);
   });
 
   const curJ=c.length>=2?distance(c[c.length-2],c[c.length-1]):0;
@@ -147,7 +151,8 @@ function combine(probs,weights){
 /* Exponential-weights learning: each expert earns/loses weight according
    to its historical log loss. This is adaptive rather than fixed weighting. */
 function learn(a){
-  const c=a.slice().reverse();
+  const full=a.slice().reverse();
+  const c=full.length>300 ? full.slice(full.length-300) : full;
   const w=Object.fromEntries(EXPERTS.map(x=>[x,1]));
   const preds=[];
   if(c.length<=MIN_TRAIN)return {weights:w,preds:[],brier:null,baseBrier:null,calibration:null};
