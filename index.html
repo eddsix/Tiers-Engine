@@ -3,78 +3,44 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Tiers Engine v4.2</title>
+<title>Tiers Engine v4.3</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="app">
 <header class="top">
-  <div class="brand">
-    <h1>Tiers Engine <span>v4.2</span></h1>
-    <p>Adaptive Pattern Engine</p>
-  </div>
+  <div class="brand"><h1>Tiers Engine <span>v4.3</span></h1><p>Adaptive Pattern Engine</p></div>
   <div class="actions">
     <button class="btn" id="theme">Modo noche</button>
     <button class="btn" id="undo">Deshacer</button>
     <button class="btn danger" id="clear">Borrar historial</button>
   </div>
 </header>
-
 <main class="grid">
+<section class="card wide"><div class="head"><h2>RESULT INPUT</h2><span class="muted" id="counter">0 spins</span></div><div class="numbers" id="numbers"></div></section>
 <section class="card wide">
-  <div class="head"><h2>RESULT INPUT</h2><span class="muted" id="counter">0 spins</span></div>
-  <div class="numbers" id="numbers"></div>
-</section>
-
-<section class="card wide predictionCard">
-  <div class="head"><h2>Prediction — Next Spin</h2><span class="signal" id="signal">ESPERANDO DATOS</span></div>
+  <div class="head"><h2>PREDICTION — NEXT SPIN</h2><span class="signal" id="signal">ESPERANDO DATOS</span></div>
   <div class="predgrid">
     <div class="sidebox tiersBox"><span>TIERS</span><b id="tiersProb">—</b></div>
     <div class="sidebox noBox"><span>NO TIERS</span><b id="noTiersProb">—</b></div>
-    <div class="predmain">
-      <div class="mainSide" id="mainSide">—</div>
-      <div class="confidence">Confidence <b id="confidence">—</b></div>
+    <div class="predmain"><div class="mainSide" id="mainSide">—</div><div class="confidence">Confidence <b id="confidence">—</b></div>
       <div class="barrow"><span>Tiers</span><div class="bar"><i id="tiersBar"></i></div></div>
       <div class="barrow"><span>No Tiers</span><div class="bar"><i id="noTiersBar"></i></div></div>
     </div>
   </div>
   <div class="stats">
-    <div><span>Evidence</span><b id="evidence">—</b></div>
-    <div><span>Spins</span><b id="spins">0</b></div>
-    <div><span>Model edge</span><b id="modelEdge">—</b></div>
-    <div><span>Validation</span><b id="validationScore">—</b></div>
+    <div><span>Evidence</span><b id="evidence">—</b></div><div><span>Spins</span><b id="spins">0</b></div>
+    <div><span>Model edge</span><b id="modelEdge">—</b></div><div><span>Validation</span><b id="validationScore">—</b></div>
   </div>
 </section>
-
-<section class="card wide">
-  <div class="head"><h2>MODEL STATUS</h2></div>
-  <div id="modelStatus" class="statusText">—</div>
+<section class="card wide"><div class="head"><h2>MODEL STATUS</h2></div><div id="modelStatus" class="statusText">—</div></section>
+<section class="card wide"><div class="head"><h2>SIGNAL BREAKDOWN</h2><span class="muted">10 adaptive signals</span></div><div id="signals" class="signals">—</div></section>
+<section class="card wide"><div class="head"><h2>MODEL VALIDATION</h2><span class="muted">walk-forward · past data only</span></div>
+  <div class="validation"><div><span>Predictions evaluated</span><b id="validationCount">—</b></div><div><span>Brier model</span><b id="brier">—</b></div><div><span>Brier baseline</span><b id="baselineBrier">—</b></div><div><span>Improvement</span><b id="improvement">—</b></div><div><span>Calibration</span><b id="calibration">—</b></div></div>
+  <p class="note">La probabilidad es una estimación del modelo basada en el historial; no es una probabilidad matemática garantizada.</p>
 </section>
-
-<section class="card wide">
-  <div class="head"><h2>SIGNAL BREAKDOWN</h2><span class="muted">10 adaptive signals</span></div>
-  <div id="signals" class="signals">—</div>
-</section>
-
-<section class="card wide">
-  <div class="head"><h2>MODEL VALIDATION</h2><span class="muted">walk-forward · past data only</span></div>
-  <div class="validation">
-    <div><span>Predictions evaluated</span><b id="validationCount">—</b></div>
-    <div><span>Brier model</span><b id="brier">—</b></div>
-    <div><span>Brier baseline</span><b id="baselineBrier">—</b></div>
-    <div><span>Improvement</span><b id="improvement">—</b></div>
-    <div><span>Calibration</span><b id="calibration">—</b></div>
-  </div>
-  <p class="note">La probabilidad es una estimación del modelo basada en el historial. No representa una probabilidad matemática garantizada de una ruleta aleatoria.</p>
-</section>
-
-<section class="card wide">
-  <div class="head"><h2>HISTORY</h2><span class="muted">latest 50 · newest first</span></div>
-  <div id="history" class="history">—</div>
-</section>
-</main>
-<footer>Tiers Engine · European roulette · Tiers du Cylindre</footer>
+<section class="card wide"><div class="head"><h2>HISTORY</h2><span class="muted">latest 50 · newest first</span></div><div id="history" class="history">—</div></section>
+</main><footer>Tiers Engine · European roulette · Tiers du Cylindre</footer>
 </div>
 <script src="app.js"></script>
-</body>
-</html>
+</body></html>
