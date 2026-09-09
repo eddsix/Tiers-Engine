@@ -2,78 +2,107 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#090d12">
 <title>Tiers Engine</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main class="app">
-<header class="topbar">
-  <div><div class="eyebrow">ADAPTIVE PATTERN ENGINE</div><h1>Tiers Engine</h1></div>
-  <div class="actions">
-    <button id="themeBtn" class="icon-btn" aria-label="Toggle theme">◐</button>
-    <button id="undoBtn">Undo</button>
-    <button id="clearBtn" class="danger">Delete History</button>
-  </div>
-</header>
+<div id="app" class="app">
+  <header class="topbar">
+    <div><div class="eyebrow">ADAPTIVE PATTERN ENGINE</div><h1>Tiers Engine</h1></div>
+    <div class="actions">
+      <button type="button" id="themeBtn" class="tool">◐</button>
+      <button type="button" id="undoBtn" class="tool">Undo</button>
+      <button type="button" id="clearBtn" class="tool danger">Delete History</button>
+    </div>
+  </header>
 
-<section class="card input-card">
-  <div class="section-head"><div><div class="section-label">RESULT INPUT</div><div class="sub">European roulette · 0–36</div></div></div>
-  <div id="keypad" class="keypad"></div>
-</section>
+  <section class="card">
+    <div class="section-head"><div><div class="label">RESULT INPUT</div><div class="sub">European roulette · 0–36</div></div></div>
+    <div class="keypad" aria-label="Roulette result input">
+      <button type="button" class="r-green" data-number="0">0</button>
+      <button type="button" class="r-red" data-number="1">1</button>
+      <button type="button" class="r-black" data-number="2">2</button>
+      <button type="button" class="r-red" data-number="3">3</button>
+      <button type="button" class="r-black" data-number="4">4</button>
+      <button type="button" class="r-red" data-number="5">5</button>
+      <button type="button" class="r-black" data-number="6">6</button>
+      <button type="button" class="r-red" data-number="7">7</button>
+      <button type="button" class="r-black" data-number="8">8</button>
+      <button type="button" class="r-red" data-number="9">9</button>
+      <button type="button" class="r-black" data-number="10">10</button>
+      <button type="button" class="r-black" data-number="11">11</button>
+      <button type="button" class="r-red" data-number="12">12</button>
+      <button type="button" class="r-black" data-number="13">13</button>
+      <button type="button" class="r-red" data-number="14">14</button>
+      <button type="button" class="r-black" data-number="15">15</button>
+      <button type="button" class="r-red" data-number="16">16</button>
+      <button type="button" class="r-black" data-number="17">17</button>
+      <button type="button" class="r-red" data-number="18">18</button>
+      <button type="button" class="r-red" data-number="19">19</button>
+      <button type="button" class="r-black" data-number="20">20</button>
+      <button type="button" class="r-red" data-number="21">21</button>
+      <button type="button" class="r-black" data-number="22">22</button>
+      <button type="button" class="r-red" data-number="23">23</button>
+      <button type="button" class="r-black" data-number="24">24</button>
+      <button type="button" class="r-red" data-number="25">25</button>
+      <button type="button" class="r-black" data-number="26">26</button>
+      <button type="button" class="r-red" data-number="27">27</button>
+      <button type="button" class="r-black" data-number="28">28</button>
+      <button type="button" class="r-red" data-number="29">29</button>
+      <button type="button" class="r-black" data-number="30">30</button>
+      <button type="button" class="r-black" data-number="31">31</button>
+      <button type="button" class="r-red" data-number="32">32</button>
+      <button type="button" class="r-black" data-number="33">33</button>
+      <button type="button" class="r-red" data-number="34">34</button>
+      <button type="button" class="r-black" data-number="35">35</button>
+      <button type="button" class="r-red" data-number="36">36</button>
+    </div>
+  </section>
 
-<section class="grid">
-  <article class="card prediction">
-    <div class="section-label">PREDICTION</div>
-    <div class="prediction-main">
-      <div>
-        <div id="status" class="status">DATA INSUFFICIENT</div>
-        <div id="mainPct" class="main-pct">—</div>
-        <div id="mainSide" class="main-side">Waiting for more results</div>
+  <section class="grid">
+    <article class="card">
+      <div class="label">PREDICTION</div>
+      <div class="prediction">
+        <div><div id="modelState" class="state">DATA INSUFFICIENT</div><div id="mainPct" class="main-pct">—</div><div id="mainSide" class="main-side">Waiting for more results</div></div>
+        <div class="confidence"><span>CONFIDENCE</span><strong id="confidence">—</strong></div>
       </div>
-      <div class="confidence"><span>CONFIDENCE</span><strong id="confidence">—</strong></div>
-    </div>
-    <div class="prob-row">
-      <div><span>Tiers</span><strong id="tiersPct">—</strong></div>
-      <div><span>No Tiers</span><strong id="noTiersPct">—</strong></div>
-    </div>
-    <div class="bar"><i id="tiersBar"></i></div>
-    <p id="modelNote" class="muted"></p>
-  </article>
+      <div class="prob-row"><div><span>Tiers</span><strong id="tiersPct">—</strong></div><div><span>No Tiers</span><strong id="noTiersPct">—</strong></div></div>
+      <div class="bar"><i id="tiersBar"></i></div>
+      <div id="modelNote" class="note"></div>
+    </article>
 
-  <article class="card">
-    <div class="section-label">MODEL STATUS</div>
-    <div class="stats">
-      <div><span>Total results</span><strong id="total">0</strong></div>
-      <div><span>Historical Tiers rate</span><strong id="histRate">—</strong></div>
-      <div><span>Current Tiers streak</span><strong id="tiersStreak">0</strong></div>
-      <div><span>Current No Tiers streak</span><strong id="noTiersStreak">0</strong></div>
-      <div><span>Current interval</span><strong id="interval">—</strong></div>
-      <div><span>Average interval</span><strong id="avgInterval">—</strong></div>
-      <div><span>Walk-forward Brier</span><strong id="brier">—</strong></div>
-      <div><span>Walk-forward accuracy</span><strong id="accuracy">—</strong></div>
-    </div>
-  </article>
-</section>
+    <article class="card">
+      <div class="label">MODEL STATUS</div>
+      <div class="stats">
+        <div><span>Total results</span><strong id="total">0</strong></div>
+        <div><span>Historical Tiers rate</span><strong id="histRate">—</strong></div>
+        <div><span>Tiers streak</span><strong id="tiersStreak">0</strong></div>
+        <div><span>No Tiers streak</span><strong id="noTiersStreak">0</strong></div>
+        <div><span>Current interval</span><strong id="currentInterval">—</strong></div>
+        <div><span>Average interval</span><strong id="averageInterval">—</strong></div>
+        <div><span>Walk-forward Brier</span><strong id="brier">—</strong></div>
+        <div><span>Walk-forward accuracy</span><strong id="accuracy">—</strong></div>
+      </div>
+    </article>
+  </section>
 
-<section class="card">
-  <div class="section-head"><div><div class="section-label">SIGNAL BREAKDOWN</div><div class="sub">Adaptive model contribution</div></div></div>
-  <div id="signalsGrid" class="signal-grid"></div>
-</section>
+  <section class="card">
+    <div class="label">SIGNAL BREAKDOWN</div>
+    <div id="signals" class="signal-grid"></div>
+  </section>
 
-<section class="card">
-  <div class="section-head"><div><div class="section-label">MODEL VALIDATION</div><div class="sub">Walk-forward · no look-ahead</div></div></div>
-  <div id="validation" class="validation"></div>
-</section>
+  <section class="card">
+    <div class="label">MODEL VALIDATION</div>
+    <div id="validation" class="validation"></div>
+  </section>
 
-<section class="card">
-  <div class="section-head"><div class="section-label">HISTORY</div><span id="historyCount" class="muted">0 / 50</span></div>
-  <div id="history" class="history empty">No results yet.</div>
-</section>
-
-<footer><span>Tiers du Cylindre: 27 · 13 · 36 · 11 · 30 · 8 · 23 · 10 · 5 · 24 · 16 · 33</span><span>Local browser storage</span></footer>
-</main>
+  <section class="card">
+    <div class="section-head"><div class="label">HISTORY</div><span id="historyCount" class="note">0 / 50</span></div>
+    <div id="history" class="history empty">No results yet.</div>
+  </section>
+</div>
 <script src="app.js"></script>
 </body>
 </html>
