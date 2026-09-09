@@ -30,3 +30,7 @@ h1{font-size:28px;margin:5px 0 0;letter-spacing:-.035em}.actions{display:flex;ga
 .history{display:flex;flex-direction:column;gap:7px;margin-top:12px}.history.empty{display:block;padding:20px 0;color:var(--muted)}.history-row{display:grid;grid-template-columns:50px 1fr 95px 95px 70px;gap:8px;align-items:center;background:var(--panel2);padding:10px 12px;border-radius:9px}.number{font-size:18px;font-weight:850}.badge{font-size:9px;font-weight:850;letter-spacing:.08em}.tiers{color:var(--accent)}.no-tiers{color:var(--muted)}.history-meta{text-align:right;color:var(--muted);font-size:10px}
 footer{display:flex;justify-content:space-between;gap:14px;color:var(--muted);font-size:9px;padding:15px 2px}
 @media(max-width:780px){.app{padding:13px}.topbar{align-items:flex-start}.grid{grid-template-columns:1fr}.keypad{grid-template-columns:repeat(7,1fr)}.signal-grid{grid-template-columns:repeat(2,1fr)}.validation{grid-template-columns:1fr 1fr}.history-row{grid-template-columns:42px 1fr 70px}.history-meta{display:none}.main-pct{font-size:54px}footer{display:block}footer span{display:block;margin-top:5px}}
+
+.keypad button.roulette-red{background:#bd3f49!important;color:#ffffff!important;border:2px solid #d86a72!important}
+.keypad button.roulette-black{background:#161a20!important;color:#ffffff!important;border:2px solid #424b56!important}
+.keypad button.roulette-green{background:#16885e!important;color:#ffffff!important;border:2px solid #35ad80!important}

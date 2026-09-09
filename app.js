@@ -1,5 +1,5 @@
 const TIERS=[27,13,36,11,30,8,23,10,5,24,16,33];
-const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
+const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const HKEY="tiers-engine-history-v2";
 
@@ -7,11 +7,22 @@ let history=loadHistory();
 
 function loadHistory(){
   try{
-    const x=JSON.parse(localStorage.getItem(HKEY)||"[]");
+    const raw=localStorage.getItem(HKEY) ?? localStorage.getItem("tiers-engine-history-v1") ?? "[]";
+    const x=JSON.parse(raw);
     return Array.isArray(x)?x.map(Number).filter(n=>Number.isInteger(n)&&n>=0&&n<=36):[];
-  }catch(e){return[]}
+  }catch(e){
+    return [];
+  }
 }
-function save(){localStorage.setItem(HKEY,JSON.stringify(history))}
+function save(){
+  try{
+    localStorage.setItem(HKEY,JSON.stringify(history));
+    return true;
+  }catch(e){
+    console.error("Tiers Engine: unable to save history",e);
+    return false;
+  }
+}
 function isTiers(n){return TIERS.includes(n)}
 function pct(x){return `${(x*100).toFixed(1)}%`}
 function clamp(x,a,b){return Math.max(a,Math.min(b,x))}
@@ -29,10 +40,10 @@ function avgInterval(a){
 }
 function wheelDistance(a,b){
   const ia=WHEEL.indexOf(a),ib=WHEEL.indexOf(b),d=Math.abs(ia-ib);
-  return Math.min(d,WHEEL.length-1-d);
+  return Math.min(d,WHEEL.length-d);
 }
 function direction(a,b){
-  const n=37,ia=WHEEL.indexOf(a),ib=WHEEL.indexOf(b);
+  const n=WHEEL.length,ia=WHEEL.indexOf(a),ib=WHEEL.indexOf(b);
   const cw=(ib-ia+n)%n,ccw=(ia-ib+n)%n;
   if(cw===ccw)return 0; return cw<ccw?1:-1;
 }
@@ -62,7 +73,7 @@ function features(a){
   const jump=a.length>1?wheelDistance(a[0],a[1]):18;
   const aj=avgJump(a,3)??jump;
   const dir=a.length>1?direction(a[1],a[0]):0;
-  const lastPos=WHEEL.indexOf(a[0])/36-.5;
+  const lastPos=WHEEL.indexOf(a[0])/WHEEL.length-.5;
   return [
     2*r(5)-1,2*r(10)-1,2*r(20)-1,2*r(50)-1,2*r(100)-1,2*r(250)-1,
     2*r(n)-1,2*afterLast-1,seq,
@@ -196,14 +207,29 @@ function render(){
 function add(n){history.unshift(n);save();render()}
 $("undoBtn").onclick=()=>{if(history.length){history.shift();save();render()}}
 $("clearBtn").onclick=()=>{if(history.length&&confirm("Delete all stored results?")){history=[];save();render()}}
-$("themeBtn").onclick=()=>document.body.classList.toggle("light");
+$("themeBtn").onclick=()=>{
+  document.body.classList.toggle("light");
+  localStorage.setItem("tiers-engine-theme",document.body.classList.contains("light")?"light":"dark");
+};
 
-for(let n=0;n<=36;n++){
-  const b=document.createElement("button");
-  b.textContent=n;
-  b.classList.add(n===0?"roulette-green":RED.has(n)?"roulette-red":"roulette-black");
-  b.setAttribute("aria-label",`Enter roulette result ${n}`);
-  b.onclick=()=>add(n);
-  $("keypad").appendChild(b);
+function boot(){
+  const keypad=$("keypad");
+  if(!keypad) return;
+  if(localStorage.getItem("tiers-engine-theme")==="light") document.body.classList.add("light");
+  keypad.innerHTML="";
+  for(let n=0;n<=36;n++){
+    const b=document.createElement("button");
+    b.type="button";
+    b.textContent=String(n);
+    b.classList.add(n===0?"roulette-green":RED.has(n)?"roulette-red":"roulette-black");
+    b.setAttribute("aria-label",`Enter roulette result ${n}`);
+    b.addEventListener("click",()=>add(n));
+    keypad.appendChild(b);
+  }
+  render();
 }
-render();
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",boot,{once:true});
+}else{
+  boot();
+}
