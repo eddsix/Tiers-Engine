@@ -99,7 +99,13 @@ function render(){
   renderSignals();
 }
 function add(n){history.unshift(n);save();render()}
-for(let n=0;n<=36;n++){const b=document.createElement("button");b.textContent=n;b.onclick=()=>add(n);$("keypad").appendChild(b)}
+for(let n=0;n<=36;n++){
+  const b=document.createElement("button");
+  b.textContent=n;
+  b.className=n===0?"roulette-green":(red.has(n)?"roulette-red":"roulette-black");
+  b.onclick=()=>add(n);
+  $("keypad").appendChild(b);
+}
 $("undoBtn").onclick=()=>{if(history.length){history.shift();save();render()}}
 $("clearBtn").onclick=()=>{if(history.length&&confirm("Delete all stored results?")){history=[];save();render()}}
 $("themeBtn").onclick=()=>document.body.classList.toggle("light");
