@@ -1,46 +1,200 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Tiers Engine v4.3</title>
-<link rel="stylesheet" href="style.css">
+<meta name="theme-color" content="#081018">
+<title>European Roulette Arithmetic Engine V2</title>
+<style>
+:root{--bg:#071017;--card:#101b25;--card2:#0b141c;--line:#263746;--txt:#edf4f7;--muted:#8ea1b2;--gold:#d7b45b;--green:#16845a;--red:#b72f3d;--black:#11161b;--win:#35cf91;--loss:#f0646d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#162735 0,#071017 48%,#04080b 100%);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.app{max-width:1450px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:15px}.brand{font-size:13px;font-weight:850;letter-spacing:.12em;color:var(--gold)}.actions{display:flex;gap:7px}button{font:inherit;font-weight:700;color:var(--txt);background:#15232f;border:1px solid var(--line);border-radius:9px;padding:9px 12px;cursor:pointer}.danger{color:#ff8b92}.layout{display:grid;grid-template-columns:1fr 1.55fr;gap:15px}.card{background:linear-gradient(180deg,#12202b,#0c151d);border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:0 15px 38px #0005}.section{font-size:10px;font-weight:850;letter-spacing:.13em;color:var(--muted);text-transform:uppercase;margin-bottom:11px}.nums{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.num{height:43px;padding:0;border-radius:8px;font-size:14px;border-color:#ffffff20}.zero{background:var(--green)}.red{background:var(--red)}.black{background:var(--black)}.latest{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.last{height:70px;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:900;background:#08121a}.empty{color:#526473}.wait{color:var(--muted);padding:18px 0}.calcgrid,.predgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.calc{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:13px}.calc small{color:var(--muted);font-weight:800;letter-spacing:.1em}.formula{font-size:13px;margin-top:5px;color:#bdcad4}.val{font-size:39px;font-weight:900;color:var(--gold)}.predgrid{margin-top:10px}.pred{background:linear-gradient(135deg,#211d12,#10171d);border:1px solid #80672e;border-radius:12px;padding:13px;text-align:center}.predlabel{font-size:10px;font-weight:900;letter-spacing:.13em;color:var(--gold)}.pnum{font-size:56px;font-weight:950;line-height:1.05;margin:3px}.mags{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}.mag{font-size:11px;background:#17232d;border-radius:7px;padding:7px 2px;color:#aab8c2}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.stat{background:#08121a;border:1px solid var(--line);border-radius:9px;padding:10px}.stat span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.08em}.stat b{font-size:19px}.rates{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}.rates th,.rates td{padding:9px;border-bottom:1px solid var(--line);text-align:center}.rates th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.historywrap{margin-top:15px;overflow:auto}.history{width:100%;border-collapse:collapse;font-size:11px}.history th,.history td{padding:9px 7px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}.history th{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.07em}.hit{color:var(--win);font-weight:900}.miss{color:var(--loss);font-weight:900}.actual{font-weight:900}.hint{font-size:10px;color:var(--muted);margin-top:7px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}@media(max-width:560px){.app{padding:11px}.refgrid{grid-template-columns:1fr}.top{align-items:flex-start}.brand{font-size:11px}.actions button{padding:8px 9px}.nums{grid-template-columns:repeat(5,1fr)}.num{height:40px}.calcgrid,.predgrid{grid-template-columns:1fr}.stats{grid-template-columns:1fr}.latest .last{height:62px}}
+.refcard{background:#0b151e;border:1px solid var(--line);border-radius:8px;padding:8px}.refcard small{display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.07em}.refcard b{display:block;margin-top:3px;font-size:16px;color:var(--gold)}.signal{padding:8px;border-radius:8px;background:#111c25;border:1px solid var(--line);margin-top:5px}.signal strong{color:var(--gold)}
+.statpanel{margin-top:12px;background:#08121a;border:1px solid var(--line);border-radius:11px;padding:13px}.stathead{color:var(--gold);font-size:11px}.refgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}.refcard{background:#0b151e;border:1px solid var(--line);border-radius:8px;padding:9px}.refcard small{display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.07em}.refcard b{display:block;margin-top:3px;font-size:17px;color:var(--gold)}.confidence-note{font-size:9px;color:var(--muted);margin-top:8px;line-height:1.4}.signal-title{font-size:9px;font-weight:850;letter-spacing:.1em;color:var(--muted);margin:12px 0 6px}.signal-table-wrap{overflow:auto}.signal-table{width:100%;border-collapse:collapse;font-size:10px}.signal-table th,.signal-table td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}.signal-table th{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.confidence-low{color:var(--muted);font-weight:800}.confidence-medium{color:#d7b45b;font-weight:850}.confidence-high{color:var(--win);font-weight:900}.signal-strong{color:var(--win);font-weight:900}.signal-none{color:var(--muted);font-weight:800}
+
+.advanced{margin-top:15px}.advgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.advgrid.two{grid-template-columns:repeat(2,1fr)}.advcard{background:#08121a;border:1px solid var(--line);border-radius:9px;padding:10px}.advcard span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em}.advcard b{display:block;color:var(--gold);font-size:18px;margin-top:3px}.advtitle{font-size:9px;font-weight:900;letter-spacing:.1em;color:var(--muted);margin:13px 0 6px}.advtable{width:100%;border-collapse:collapse;font-size:10px}.advtable th,.advtable td{padding:7px;border-bottom:1px solid var(--line);text-align:center}.advtable th{font-size:8px;color:var(--muted);text-transform:uppercase}.advnote,.validation{background:#08121a;border:1px solid var(--line);border-radius:9px;padding:9px;color:var(--muted);font-size:10px;line-height:1.45}.validation strong{color:var(--gold)}.positive{color:var(--win);font-weight:800}.negative{color:var(--loss);font-weight:800}
+@media(max-width:700px){.advgrid{grid-template-columns:repeat(2,1fr)}}@media(max-width:480px){.advgrid,.advgrid.two{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <div class="app">
-<header class="top">
-  <div class="brand"><h1>Tiers Engine <span>v4.3</span></h1><p>Adaptive Pattern Engine</p></div>
-  <div class="actions">
-    <button class="btn" id="theme">Modo noche</button>
-    <button class="btn" id="undo">Deshacer</button>
-    <button class="btn danger" id="clear">Borrar historial</button>
-  </div>
-</header>
-<main class="grid">
-<section class="card wide"><div class="head"><h2>RESULT INPUT</h2><span class="muted" id="counter">0 spins</span></div><div class="numbers" id="numbers"></div></section>
-<section class="card wide">
-  <div class="head"><h2>PREDICTION — NEXT SPIN</h2><span class="signal" id="signal">ESPERANDO DATOS</span></div>
-  <div class="predgrid">
-    <div class="sidebox tiersBox"><span>TIERS</span><b id="tiersProb">—</b></div>
-    <div class="sidebox noBox"><span>NO TIERS</span><b id="noTiersProb">—</b></div>
-    <div class="predmain"><div class="mainSide" id="mainSide">—</div><div class="confidence">Confidence <b id="confidence">—</b></div>
-      <div class="barrow"><span>Tiers</span><div class="bar"><i id="tiersBar"></i></div></div>
-      <div class="barrow"><span>No Tiers</span><div class="bar"><i id="noTiersBar"></i></div></div>
-    </div>
-  </div>
-  <div class="stats">
-    <div><span>Evidence</span><b id="evidence">—</b></div><div><span>Spins</span><b id="spins">0</b></div>
-    <div><span>Model edge</span><b id="modelEdge">—</b></div><div><span>Validation</span><b id="validationScore">—</b></div>
-  </div>
-</section>
-<section class="card wide"><div class="head"><h2>MODEL STATUS</h2></div><div id="modelStatus" class="statusText">—</div></section>
-<section class="card wide"><div class="head"><h2>SIGNAL BREAKDOWN</h2><span class="muted">10 adaptive signals</span></div><div id="signals" class="signals">—</div></section>
-<section class="card wide"><div class="head"><h2>MODEL VALIDATION</h2><span class="muted">walk-forward · past data only</span></div>
-  <div class="validation"><div><span>Predictions evaluated</span><b id="validationCount">—</b></div><div><span>Brier model</span><b id="brier">—</b></div><div><span>Brier baseline</span><b id="baselineBrier">—</b></div><div><span>Improvement</span><b id="improvement">—</b></div><div><span>Calibration</span><b id="calibration">—</b></div></div>
-  <p class="note">La probabilidad es una estimación del modelo basada en el historial; no es una probabilidad matemática garantizada.</p>
-</section>
-<section class="card wide"><div class="head"><h2>HISTORY</h2><span class="muted">latest 50 · newest first</span></div><div id="history" class="history">—</div></section>
-</main><footer>Tiers Engine · European roulette · Tiers du Cylindre</footer>
+<header class="top"><div class="brand">EUROPEAN ROULETTE · ARITHMETIC ENGINE V2</div><div class="actions"><button id="undo">Undo</button><button id="clear" class="danger">Clear</button></div></header>
+<div class="layout">
+<section class="card"><div class="section">Enter result</div><div id="nums" class="nums"></div><div class="section" style="margin-top:17px">Latest 3 spins · newest on right</div><div id="latest" class="latest"></div><div class="hint">A prediction is created once 3 spins exist and is evaluated by the next spin.</div></section>
+<section class="card"><div class="section">Current calculation</div><div id="waiting" class="wait">Waiting for 3 results…</div><div id="engine" hidden>
+<div class="calcgrid"><div class="calc"><small>XY DIFFERENCE</small><div id="xyf" class="formula"></div><div id="xy" class="val"></div></div><div class="calc"><small>YZ DIFFERENCE</small><div id="yzf" class="formula"></div><div id="yz" class="val"></div></div></div>
+<div class="predgrid">
+<div class="pred"><div class="predlabel">SUM PREDICTION</div><div id="sum" class="pnum"></div><div class="mags"><div class="mag">±3<br><span id="sum3">—</span></div><div class="mag">±5<br><span id="sum5">—</span></div><div class="mag">±7<br><span id="sum7">—</span></div></div></div>
+<div class="pred"><div class="predlabel">SUBTRACTION PREDICTION</div><div id="sub" class="pnum"></div><div class="mags"><div class="mag">±3<br><span id="sub3">—</span></div><div class="mag">±5<br><span id="sub5">—</span></div><div class="mag">±7<br><span id="sub7">—</span></div></div></div>
 </div>
-<script src="app.js"></script>
-</body></html>
+<div class="stats"><div class="stat"><span>Predictions evaluated</span><b id="evaluated">0</b></div><div class="stat"><span>SUM samples</span><b id="sumSamples">0</b></div><div class="stat"><span>RESTA samples</span><b id="subSamples">0</b></div></div>
+<table class="rates"><thead><tr><th>Operation</th><th>±3</th><th>±5</th><th>±7</th></tr></thead><tbody><tr><td><b>SUM</b></td><td id="sr3">0%</td><td id="sr5">0%</td><td id="sr7">0%</td></tr><tr><td><b>RESTA</b></td><td id="rr3">0%</td><td id="rr5">0%</td><td id="rr7">0%</td></tr><tr><td><b>OVERALL</b></td><td id="or3">0%</td><td id="or5">0%</td><td id="or7">0%</td></tr></tbody></table>
+<div class="statpanel">
+  <div class="predlabel stathead">STATISTICAL ANALYSIS</div>
+  <div class="refgrid" id="referenceStats"></div>
+  <div class="confidence-note">Reference = coverage expected from a uniform European wheel. The confidence indicator is descriptive, not a guarantee of future results.</div>
+  <div class="signal-title">SAMPLE SIZE &amp; SIGNAL</div>
+  <div class="signal-table-wrap"><table class="signal-table"><thead><tr><th>Prediction</th><th>Result</th><th>Reference</th><th>Difference</th><th>95% CI</th><th>Sample</th><th>Confidence</th></tr></thead><tbody id="signalRows"></tbody></table></div>
+</div>
+</div></section>
+</div>
+
+<section class="card advanced">
+<div class="section">Advanced validation · descriptive analysis</div>
+<div class="advgrid">
+  <div class="advcard"><span>SUM avg distance</span><b id="sumAvgDist">—</b></div>
+  <div class="advcard"><span>RESTA avg distance</span><b id="subAvgDist">—</b></div>
+  <div class="advcard"><span>SUM CW / CCW</span><b id="sumDir">—</b></div>
+  <div class="advcard"><span>RESTA CW / CCW</span><b id="subDir">—</b></div>
+</div>
+<div class="advtitle">RECENT VS HISTORICAL</div>
+<table class="advtable"><thead><tr><th>Metric</th><th>Recent</th><th>Historical</th><th>Δ</th></tr></thead>
+<tbody id="recentRows"></tbody></table>
+<div class="advtitle">BACKTEST / WALK-FORWARD</div>
+<div class="advgrid two">
+  <div class="advcard"><span>Backtest samples</span><b id="btSamples">0</b></div>
+  <div class="advcard"><span>Out-of-sample samples</span><b id="wfSamples">0</b></div>
+  <div class="advcard"><span>Backtest ±3 overall</span><b id="bt3">—</b></div>
+  <div class="advcard"><span>Walk-forward ±3 overall</span><b id="wf3">—</b></div>
+</div>
+<div class="advtitle">SIMILAR CONFIGURATIONS</div>
+<div id="similar" class="advnote">At least 20 evaluated predictions are needed for a meaningful comparison.</div>
+<div class="advtitle">VALIDATION STATUS</div>
+<div id="validation" class="validation">Insufficient data for validation.</div>
+</section>
+<section class="card historywrap"><div class="section">Prediction history · evaluated against the next actual spin</div><table class="history"><thead><tr><th>#</th><th>XYZ</th><th>XY</th><th>YZ</th><th>SUM</th><th>RESTA</th><th>ACTUAL</th><th>SUM ±3</th><th>SUM ±5</th><th>SUM ±7</th><th>RESTA ±3</th><th>RESTA ±5</th><th>RESTA ±7</th></tr></thead><tbody id="history"></tbody></table></section>
+</div>
+<script>
+const W=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const R=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+let spins=[],history=[];
+const $=x=>document.getElementById(x);
+const color=n=>n===0?'zero':R.has(n)?'red':'black';
+const circ=n=>((n%37)+37)%37;
+const diff=(a,b)=>Math.abs(a-b);
+function near(actual,pred,r){const a=W.indexOf(actual),p=W.indexOf(pred),d=Math.abs(a-p);return Math.min(d,37-d)<=r}
+function renderNums(){$('nums').innerHTML=[...Array(37).keys()].map(n=>`<button class="num ${color(n)}" data-n="${n}">${n}</button>`).join('');document.querySelectorAll('.num').forEach(b=>b.onclick=()=>add(+b.dataset.n))}
+function renderLatest(){const a=spins.slice(-3);$('latest').innerHTML=[0,1,2].map(i=>a[i]===undefined?'<div class="last empty">—</div>':`<div class="last ${color(a[i])}">${a[i]}</div>`).join('')}
+function pct(w,n){return n?Math.round(w/n*100)+'%':'0%'}
+function winText(v){return v?'<span class="hit">WIN</span>':'<span class="miss">LOSS</span>'}
+function stats(){
+ const n=history.length;$('evaluated').textContent=n;$('sumSamples').textContent=n;$('subSamples').textContent=n;
+ [3,5,7].forEach(r=>{
+  const sw=history.filter(h=>near(h.actual,h.sum,r)).length, rw=history.filter(h=>near(h.actual,h.sub,r)).length;
+  $('sr'+r).textContent=pct(sw,n);$('rr'+r).textContent=pct(rw,n);$('or'+r).textContent=pct(sw+rw,n*2);
+ });
+}
+function wilson(w,n){
+ if(!n)return{lo:0,hi:0};
+ const z=1.96,p=w/n,den=1+z*z/n,mid=p+z*z/(2*n),rad=z*Math.sqrt((p*(1-p)+z*z/(4*n))/n);
+ return{lo:(mid-rad)/den,hi:(mid+rad)/den};
+}
+function confidenceLabel(w,n,ci,ref){
+ if(n<30)return['LOW','confidence-low',false];
+ if(n<100)return['MEDIUM','confidence-medium',false];
+ const margin=ci.hi-ci.lo;
+ const above=ci.lo>ref;
+ const below=ci.hi<ref;
+ if(above||below)return['HIGH','confidence-high',true];
+ return margin<0.08?['MEDIUM','confidence-medium',false]:['LOW','confidence-low',false];
+}
+function renderStats(){
+ const n=history.length,ref={3:7/37,5:11/37,7:15/37};
+ $('referenceStats').innerHTML=[3,5,7].map(r=>`<div class="refcard"><small>±${r} · roulette reference</small><b>${(ref[r]*100).toFixed(1)}%</b><small style="margin-top:4px">${r===3?7:r===5?11:15} / 37 positions</small></div>`).join('');
+ const rows=[];
+ ['sum','sub'].forEach(op=>[3,5,7].forEach(r=>{
+   const w=history.filter(h=>near(h.actual,h[op],r)).length, rate=n?w/n:0, ci=wilson(w,n), delta=rate-ref[r];
+   const [label,cls,rawStrong]=confidenceLabel(w,n,ci,ref[r]);
+   // Require a Bonferroni-adjusted 95% family-wise screen across the 6 tests.
+   const z=2.638;
+   let strong=false;
+   if(n>=100){
+     const den=1+z*z/n,mid=rate+z*z/(2*n),rad=z*Math.sqrt((rate*(1-rate)+z*z/(4*n))/n);
+     strong=((mid-rad)/den)>ref[r];
+   }
+   rows.push(`<tr><td><b>${op.toUpperCase()} ±${r}</b></td><td>${n?(rate*100).toFixed(1):'0.0'}%</td><td>${(ref[r]*100).toFixed(1)}%</td><td>${delta>=0?'+':''}${(delta*100).toFixed(1)} pp</td><td>${n?(ci.lo*100).toFixed(1)+'–'+(ci.hi*100).toFixed(1)+'%':'—'}</td><td>${w}/${n}</td><td class="${strong?'confidence-high':cls}">${strong?'STRONG SIGNAL':label}</td></tr>`);
+ }));
+ $('signalRows').innerHTML=rows.join('');
+}
+
+function direction(pred,actual){
+ const p=W.indexOf(pred),a=W.indexOf(actual);
+ if(p===a)return 'EXACT';
+ const cw=(a-p+37)%37,ccw=(p-a+37)%37;
+ return cw<ccw?'CW':'CCW';
+}
+function distance(pred,actual){
+ const p=W.indexOf(pred),a=W.indexOf(actual);
+ return Math.min((a-p+37)%37,(p-a+37)%37);
+}
+function rateOn(arr,op,r){
+ if(!arr.length)return 0;
+ return arr.filter(h=>near(h.actual,h[op],r)).length/arr.length;
+}
+function advancedAnalysis(){
+ const n=history.length;
+ if(!n){
+  ['sumAvgDist','subAvgDist','sumDir','subDir'].forEach(id=>$(id).textContent='—');
+  $('btSamples').textContent='0';$('wfSamples').textContent='0';$('bt3').textContent='—';$('wf3').textContent='—';
+  $('recentRows').innerHTML='';$('similar').textContent='At least 20 evaluated predictions are needed for a meaningful comparison.';
+  $('validation').textContent='Insufficient data for validation.';return;
+ }
+ const avg=op=>history.reduce((s,h)=>s+distance(h[op],h.actual),0)/n;
+ $('sumAvgDist').textContent=avg('sum').toFixed(2)+' pockets';
+ $('subAvgDist').textContent=avg('sub').toFixed(2)+' pockets';
+ const dirText=op=>{
+  const cw=history.filter(h=>direction(h[op],h.actual)==='CW').length;
+  const ccw=history.filter(h=>direction(h[op],h.actual)==='CCW').length;
+  const ex=n-cw-ccw;
+  return `${Math.round(cw/n*100)}% / ${Math.round(ccw/n*100)}% / ${Math.round(ex/n*100)}%`;
+ };
+ $('sumDir').textContent=dirText('sum')+' CW/CCW/EX';
+ $('subDir').textContent=dirText('sub')+' CW/CCW/EX';
+
+ const recent=history.slice(-25);
+ const rows=[3,5,7].map(r=>{
+   const rr=rateOn(recent,'sum',r),hh=rateOn(history,'sum',r),d=rr-hh;
+   return `<tr><td>SUM ±${r}</td><td>${(rr*100).toFixed(1)}%</td><td>${(hh*100).toFixed(1)}%</td><td class="${d>=0?'positive':'negative'}">${d>=0?'+':''}${(d*100).toFixed(1)} pp</td></tr>`;
+ }).join('');
+ $('recentRows').innerHTML=rows;
+
+ $('btSamples').textContent=n;
+ const split=Math.floor(n*0.7);
+ $('wfSamples').textContent=Math.max(0,n-split);
+ $('bt3').textContent=n?pct(history.filter(h=>near(h.actual,h.sum,3)).length,n):'—';
+ const wf=history.slice(split);
+ $('wf3').textContent=wf.length?pct(wf.filter(h=>near(h.actual,h.sum,3)).length,wf.length):'—';
+
+ if(n<20){$('similar').textContent='At least 20 evaluated predictions are needed for a meaningful comparison.'}
+ else{
+   const last=history[n-1],matches=history.slice(0,-1).filter(h=>Math.abs(h.xy-last.xy)<=1&&Math.abs(h.yz-last.yz)<=1);
+   const next=matches.length?matches.map(h=>h.actual):[];
+   $('similar').innerHTML=`Current configuration: XY ${last.xy}, YZ ${last.yz}. Similar past configurations (±1 on XY and YZ): <b>${matches.length}</b>.`+
+     (next.length?` Their next actual results had average wheel distance <b>${(next.reduce((s,a)=>s+distance(last.sum,a),0)/next.length).toFixed(2)}</b> from the current SUM reference.`:' No comparable observations found.');
+ }
+ const base=7/37, observed=rateOn(history,'sum',3);
+ const stable=recent.length>=10;
+ $('validation').innerHTML=`<strong>Descriptive only:</strong> SUM ±3 is ${(observed*100).toFixed(1)}% versus a uniform-wheel reference of ${(base*100).toFixed(1)}%. `+
+   (stable?'Recent sample available.':'More recent data is needed for a stable comparison.')+
+   ` Walk-forward here is a chronological 70/30 diagnostic split; it does not alter or train the prediction engine.`;
+}
+function calculate(){
+ renderLatest();
+ if(spins.length<3){$('waiting').hidden=false;$('engine').hidden=true;return}
+ $('waiting').hidden=true;$('engine').hidden=false;
+ const [x,y,z]=spins.slice(-3),xy=diff(x,y),yz=diff(y,z),sum=circ(xy+yz),sub=Math.abs(xy-yz);
+ $('xyf').textContent=`|${x} − ${y}|`;$('yzf').textContent=`|${y} − ${z}|`;
+ $('xy').textContent=xy;$('yz').textContent=yz;$('sum').textContent=sum;$('sub').textContent=sub;
+ [3,5,7].forEach(r=>{$('sum'+r).textContent='next spin';$('sub'+r).textContent='next spin'});stats();
+}
+function add(n){
+ if(spins.length>=3){const [x,y,z]=spins.slice(-3),xy=diff(x,y),yz=diff(y,z);history.push({xyz:[x,y,z],xy,yz,sum:circ(xy+yz),sub:Math.abs(xy-yz),actual:n})}
+ spins.push(n);calculate();renderHistory()
+}
+function renderHistory(){$('history').innerHTML=history.slice().reverse().map((h,i)=>{const m=r=>near(h.actual,h.sum,r),s=r=>near(h.actual,h.sub,r);return `<tr><td>${history.length-i}</td><td>${h.xyz.join(' → ')}</td><td>${h.xy}</td><td>${h.yz}</td><td><b>${h.sum}</b></td><td><b>${h.sub}</b></td><td class="actual ${color(h.actual)}">${h.actual}</td><td>${winText(m(3))}</td><td>${winText(m(5))}</td><td>${winText(m(7))}</td><td>${winText(s(3))}</td><td>${winText(s(5))}</td><td>${winText(s(7))}</td></tr>`}).join('');stats()}
+$('undo').onclick=()=>{if(!spins.length)return;spins.pop();if(history.length>Math.max(0,spins.length-2))history.pop();calculate();renderHistory()};
+$('clear').onclick=()=>{if(confirm('Clear all spins and history?')){spins=[];history=[];calculate();renderHistory()}};
+renderNums();calculate();renderHistory();
+</script>
+</body>
+</html>
