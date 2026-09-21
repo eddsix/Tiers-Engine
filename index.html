@@ -54,12 +54,22 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 .analysis-table-wrap{overflow-x:auto}.analysis-note{font-size:11px;line-height:1.45;color:#64748b;margin-top:8px}
 .patterns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}.pattern-card{background:#111827;border-radius:8px;padding:7px}.pattern-card .pattern{font-weight:bold;font-size:11px}.pattern-card small{display:block;color:#64748b;font-size:9px;margin-top:2px}
 @media(max-width:800px){.analysis-grid{grid-template-columns:1fr}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.recommend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.recommend-card{background:#0b1220;border:1px solid #263244;border-radius:12px;padding:14px}
+.recommend-card h3{margin:0 0 10px;font-size:15px}
+.recommend-main{font-size:21px;font-weight:800;padding:12px;border-radius:10px;background:#111827;border:1px solid #334155}
+.recommend-main.no{color:#fbbf24}.recommend-main.yes{color:#4ade80}
+.recommend-detail{font-size:11px;line-height:1.5;color:#94a3b8;margin-top:9px}
+.recommend-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:11px}
+.recommend-table th,.recommend-table td{padding:6px 4px;border-bottom:1px solid #263244;text-align:center}
+@media(max-width:800px){.recommend-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V1.5 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V1.6 · Ruleta europea · predicción por pockets</div></div>
 <button class="clear" id="clear">Borrar historial</button>
 </header>
 
@@ -91,8 +101,8 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 </div>
 
 <div class="card">
-<h2>Últimos 15 · <span id="tableDirection">CW</span></h2>
-<div class="muted" style="margin-bottom:8px">Se muestran los 15 registros más recientes; cada señal gana dentro de ±4 pockets.</div>
+<h2>Historial completo · <span id="tableDirection">CW</span></h2>
+<div class="muted" style="margin-bottom:8px">Se muestran todos los registros acumulados; cada señal gana dentro de ±4 pockets.</div>
 <div class="table">
 <table>
 <thead><tr><th>#</th><th>Resultado usado</th><th>Predicción</th><th>TOP</th><th>UNDER</th><th>Real</th><th>Resultado</th></tr></thead>
@@ -132,8 +142,14 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 </div>
 
 <div class="card history-analysis">
+<h2>Recomendación basada en estadísticas</h2>
+<p class="analysis-intro">La recomendación se genera únicamente cuando el historial disponible de la condición actual es suficientemente amplio y muestra una ventaja histórica clara frente a la frecuencia global. Si no se cumplen los criterios, se muestra NO APOSTAR.</p>
+<div id="recommendations"></div>
+</div>
+
+<div class="card history-analysis">
 <h2>Análisis histórico completo</h2>
-<p class="analysis-intro">La ventana visible y las gráficas siguen limitadas a los últimos 15 resultados. Este módulo analiza todas las evaluaciones acumuladas, por separado para CLOCKWISE y COUNTERCLOCKWISE, y para Predicción, TOP y UNDER.</p>
+<p class="analysis-intro">Este módulo analiza todas las evaluaciones acumuladas, por separado para CLOCKWISE y COUNTERCLOCKWISE, y para Predicción, TOP y UNDER.</p>
 <div id="historical-analysis"><div class="analysis-note">Calculando análisis histórico…</div></div>
 </div>
 </div>
@@ -242,7 +258,7 @@ function renderChart(elementId, dir){
   const underWin=isWithinPocketRange(real,p.under,4);
   all.push({pred:predWin,top:topWin,under:underWin,coverage:predWin||topWin||underWin});
  }
- const completed=all.slice(-15);
+ const completed=all;
  if(!completed.length){
   el.innerHTML='<div style="height:100%;display:grid;place-items:center;color:#64748b">Aún no hay predicciones evaluadas.</div>';
   return;
@@ -302,7 +318,7 @@ function render(){
   const real=spins[i+1].number;
   completed.push({index:i+1,used:s.number,pred:pred.prediction,top:pred.top,under:pred.under,real:real,result:outcome(real,pred)});
  }
- const visible=completed.slice(-15).reverse();
+ const visible=completed.slice().reverse();
  const tbody=document.getElementById('rows');
  tbody.innerHTML='';
  if(!visible.length){
@@ -316,7 +332,7 @@ function render(){
   });
  }
 
- const results=completed.slice(-15);
+ const results=completed;
  const total=results.length;
  const pred=results.filter(x=>x.result==='PREDICCIÓN').length;
  const top=results.filter(x=>x.result==='TOP').length;
@@ -327,7 +343,7 @@ function render(){
 
  const stats=[
  ['Evaluadas',total],['Predicción',pred],['TOP',top],['UNDER',under],
- ['MISS',miss],['3 posiciones',hits],['% acierto',pct+'%'],['Ventana',total]
+ ['MISS',miss],['3 posiciones',hits],['% acierto',pct+'%'],['Evaluaciones totales',total]
  ];
  document.getElementById('stats').innerHTML=stats.map(x=>'<div class="stat"><b>'+x[1]+'</b><span>'+x[0]+'</span></div>').join('');
  renderChart('chartCW','CW');
@@ -402,8 +418,65 @@ function renderSignalHistory(dir,signal,label){
  const st=trailingStreak(seq);
  return `<div class="signal-analysis"><h4>${label}<span class="badge">${total} evaluaciones históricas</span></h4><div class="metric-grid"><div class="metric"><small>Racha actual</small><strong>${st.len?st.type+' × '+st.len:'—'}</strong></div><div class="metric"><small>Máx. victorias</small><strong>${maxStreak(seq,'W')}</strong></div><div class="metric"><small>Máx. derrotas</small><strong>${maxStreak(seq,'L')}</strong></div><div class="metric"><small>Frecuencia W total</small><strong>${fmtHistPct(wins,total)}</strong></div></div><div class="analysis-note"><b>Después de rachas exactas:</b> qué ocurrió inmediatamente después de una racha que terminó con esa longitud.</div>${renderStreakTable(seq)}<div class="analysis-note"><b>Patrones:</b> secuencias históricas de 2, 3 y 4 resultados y el resultado observado inmediatamente después.</div>${renderPatterns(seq)}</div>`;
 }
+function exactStreakRecord(seq, type, len){
+ const m=exactStreakTransitions(seq);
+ return m[type+len] || {n:0,nextW:0,nextL:0};
+}
+
+function recommendationFor(dir){
+ const MIN_CASES=8;
+ const MIN_ADVANTAGE=10; // puntos porcentuales sobre la frecuencia global
+ const candidates=[];
+ for(const signal of ['prediction','top','under']){
+  const seq=getCompletedSignalSequence(dir,signal);
+  const total=seq.length;
+  if(!total) continue;
+  const wins=seq.filter(x=>x==='W').length;
+  const baseline=100*wins/total;
+  const st=trailingStreak(seq);
+  if(!st.len) continue;
+  const rec=exactStreakRecord(seq,st.type,st.len);
+  const rate=rec.n?100*rec.nextW/rec.n:null;
+  if(rec.n>=MIN_CASES && rate!==null){
+   candidates.push({signal,total,baseline,st,rec,rate,advantage:rate-baseline});
+  }
+ }
+ candidates.sort((a,b)=>b.advantage-a.advantage || b.rate-a.rate || b.rec.n-a.rec.n);
+ const best=candidates[0];
+ return {best,candidates,MIN_CASES,MIN_ADVANTAGE};
+}
+
+function renderRecommendationCard(dir){
+ const r=recommendationFor(dir);
+ const b=r.best;
+ let recommendation='NO APOSTAR';
+ let cls='no';
+ if(b && b.advantage>=r.MIN_ADVANTAGE){
+  recommendation='APOSTAR: '+({prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'}[b.signal]);
+  cls='yes';
+ }
+ const rows=['prediction','top','under'].map(signal=>{
+  const seq=getCompletedSignalSequence(dir,signal);
+  const total=seq.length, wins=seq.filter(x=>x==='W').length, baseline=total?100*wins/total:null, st=trailingStreak(seq);
+  const rec=st.len?exactStreakRecord(seq,st.type,st.len):{n:0,nextW:0,nextL:0};
+  const rate=rec.n?100*rec.nextW/rec.n:null;
+  const adv=rate!==null&&baseline!==null?rate-baseline:null;
+  return `<tr><td>${({prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'})[signal]}</td><td>${st.len?st.type+' × '+st.len:'—'}</td><td>${rec.n}</td><td>${rate===null?'—':rate.toFixed(1)+'%'}</td><td>${adv===null?'—':(adv>=0?'+':'')+adv.toFixed(1)+' pp'}</td></tr>`;
+ }).join('');
+ const detail=b
+  ? `Condición actual: ${b.st.type==='W'?'racha de victorias':'racha de derrotas'} × ${b.st.len}. En ${b.rec.n} casos históricos con esa misma racha, el siguiente resultado fue W en ${b.rec.nextW} ocasiones (${b.rate.toFixed(1)}%). Frecuencia W global de esta señal: ${b.baseline.toFixed(1)}%. Ventaja observada: ${(b.advantage>=0?'+':'')+b.advantage.toFixed(1)} puntos.`
+  : `No existe todavía una condición actual con al menos ${r.MIN_CASES} casos históricos comparables.`;
+ return `<section class="recommend-card"><h3>${dir==='CW'?'CLOCKWISE':'COUNTERCLOCKWISE'}</h3><div class="recommend-main ${cls}">${recommendation}</div><div class="recommend-detail">${detail}</div><div class="analysis-note">Criterio: mínimo ${r.MIN_CASES} casos para la racha actual y una frecuencia histórica al menos ${r.MIN_ADVANTAGE} puntos porcentuales superior a la frecuencia global de la señal.</div><div class="analysis-table-wrap"><table class="recommend-table"><thead><tr><th>Señal</th><th>Racha actual</th><th>Casos</th><th>Siguiente W</th><th>Ventaja</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+
+function renderRecommendations(){
+ const host=document.getElementById('recommendations'); if(!host)return;
+ host.innerHTML=`<div class="recommend-grid">${renderRecommendationCard('CW')}${renderRecommendationCard('CCW')}</div><div class="analysis-note">La recomendación es una regla estadística basada exclusivamente en el historial de la aplicación. No supone que una racha deba romperse y puede cambiar cuando entren nuevos resultados.</div>`;
+}
+
 function renderHistoricalAnalysis(){
  const host=document.getElementById('historical-analysis'); if(!host)return;
+ renderRecommendations();
  host.innerHTML=`<div class="analysis-grid"><section class="analysis-direction"><h3>CLOCKWISE</h3>${renderSignalHistory('CW','prediction','Predicción')}${renderSignalHistory('CW','top','TOP')}${renderSignalHistory('CW','under','UNDER')}</section><section class="analysis-direction"><h3>COUNTERCLOCKWISE</h3>${renderSignalHistory('CCW','prediction','Predicción')}${renderSignalHistory('CCW','top','TOP')}${renderSignalHistory('CCW','under','UNDER')}</section></div><div class="analysis-note">W = el siguiente resultado cayó dentro de ±4 bolsillos físicos del objetivo; L = no cayó. Las frecuencias mostradas son observaciones históricas de la aplicación y no implican que el siguiente giro tenga que repetir el patrón.</div>`;
 }
 
