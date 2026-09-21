@@ -64,13 +64,13 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <div class="predictions">
 <div class="box main"><div class="label">PREDICCIÓN · 10 POCKETS</div><div class="value" id="prediction">—</div></div>
 <div class="box top"><div class="label">TOP · +5 CW</div><div class="value" id="top">—</div></div>
-<div class="box under"><div class="label">UNDER · −5 CCW</div><div class="value" id="under">—</div></div>
+<div class="box under"><div class="label">UNDER · −5 CCW</div><div class="value" id="under">—</div></div><div class="muted" style="grid-column:1/-1;margin-top:2px">Ganador = resultado dentro de ±4 pockets del número objetivo.</div>
 </div>
 </div>
 
 <div class="card">
 <h2>Últimas 10 predicciones · <span id="tableDirection">CW</span></h2>
-<div class="muted" style="margin-bottom:8px">Cada predicción se evalúa con el siguiente resultado introducido.</div>
+<div class="muted" style="margin-bottom:8px">Cada señal gana si el siguiente resultado está a 4 pockets o menos de su objetivo.</div>
 <div class="table">
 <table>
 <thead><tr><th>#</th><th>Resultado usado</th><th>Predicción</th><th>TOP</th><th>UNDER</th><th>Real</th><th>Resultado</th></tr></thead>
@@ -130,11 +130,29 @@ function europeanColor(n){
  return reds.includes(n)?'red':'black';
 }
 
+function isWithinPocketRange(real,target,radius=4){
+ const realIndex=WHEEL.indexOf(real);
+ const targetIndex=WHEEL.indexOf(target);
+ if(realIndex===-1 || targetIndex===-1)return false;
+ const distance=Math.abs(realIndex-targetIndex);
+ const circularDistance=Math.min(distance,WHEEL.length-distance);
+ return circularDistance<=radius;
+}
+
 function outcome(real,p){
  if(real===undefined)return 'PENDIENTE';
- if(real===p.prediction)return 'PREDICCIÓN';
- if(real===p.top)return 'TOP';
- if(real===p.under)return 'UNDER';
+
+ // Cada señal gana si el resultado real está a 4 pockets o menos
+ // de su número objetivo, contando el objetivo: -4 ... 0 ... +4.
+ const predictionWin=isWithinPocketRange(real,p.prediction,4);
+ const topWin=isWithinPocketRange(real,p.top,4);
+ const underWin=isWithinPocketRange(real,p.under,4);
+
+ // En caso de solapamiento, se informa la primera coincidencia
+ // siguiendo la prioridad: Predicción > TOP > UNDER.
+ if(predictionWin)return 'PREDICCIÓN';
+ if(topWin)return 'TOP';
+ if(underWin)return 'UNDER';
  return 'MISS';
 }
 
