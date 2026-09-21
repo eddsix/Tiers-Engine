@@ -69,7 +69,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 </div>
 
 <div class="card">
-<h2>Últimas 10 predicciones · <span id="tableDirection">CW</span></h2>
+<h2>Historial completo · <span id="tableDirection">CW</span></h2>
 <div class="muted" style="margin-bottom:8px">Cada señal gana si el siguiente resultado está a 4 pockets o menos de su objetivo.</div>
 <div class="table">
 <table>
@@ -209,7 +209,7 @@ function render(){
   const real=spins[i+1].number;
   completed.push({index:i+1,used:s.number,pred:pred.prediction,top:pred.top,under:pred.under,real:real,result:outcome(real,pred)});
  }
- const visible=completed.slice(-10).reverse();
+ const visible=completed.slice().reverse();
  const tbody=document.getElementById('rows');
  tbody.innerHTML='';
  if(!visible.length){
@@ -234,7 +234,7 @@ function render(){
 
  const stats=[
  ['Evaluadas',total],['Predicción',pred],['TOP',top],['UNDER',under],
- ['MISS',miss],['3 posiciones',hits],['% acierto',pct+'%'],['Últimas 10',Math.min(total,10)]
+ ['MISS',miss],['3 posiciones',hits],['% acierto',pct+'%'],['Historial',total]
  ];
  document.getElementById('stats').innerHTML=stats.map(x=>'<div class="stat"><b>'+x[1]+'</b><span>'+x[0]+'</span></div>').join('');
 }
