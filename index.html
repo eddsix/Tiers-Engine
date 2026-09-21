@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Roulette Pocket Predictor V1</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b1020;color:#f8fafc;font-family:Arial,sans-serif}
+.app{max-width:1000px;margin:auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+h1{font-size:24px;margin:0}.muted{color:#94a3b8;font-size:13px}
+button{font:inherit;cursor:pointer}
+.clear{background:#291218;color:#fecdd3;border:1px solid #7f1d1d;border-radius:9px;padding:9px 12px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.tab{padding:13px;border-radius:10px;border:1px solid #334155;background:#111827;color:#cbd5e1;font-weight:bold}
+.tab.active{background:#172554;border-color:#3b82f6;color:#fff}
+.card{background:#111827;border:1px solid #263244;border-radius:14px;padding:15px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
+.num{height:44px;border:0;border-radius:8px;color:#fff;font-weight:bold}
+.num:hover{filter:brightness(1.2)}
+.red{background:#c62838}.black{background:#151a22}.green{background:#078447}
+.last{display:flex;align-items:center;gap:12px}
+.ball{width:55px;height:55px;border-radius:50%;display:grid;place-items:center;font-size:22px;font-weight:bold;border:2px solid #fff}
+.predictions{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.box{padding:13px;border-radius:10px;background:#0b1220;border:1px solid #334155}
+.box.main{border-color:#2563eb}.box.top{border-color:#16a34a}.box.under{border-color:#ea580c}
+.label{font-size:11px;color:#94a3b8}.value{font-size:27px;font-weight:bold;margin-top:5px}
+.table{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:650px}
+th,td{padding:9px 6px;border-bottom:1px solid #263244;text-align:center;font-size:13px}
+th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-weight:bold}.pending{color:#fbbf24;font-weight:bold}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:#0b1220;padding:10px;text-align:center;border-radius:9px}.stat b{font-size:19px;display:block}.stat span{font-size:11px;color:#94a3b8}
+@media(max-width:600px){.grid{grid-template-columns:repeat(6,1fr)}.predictions{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}header{align-items:flex-start;gap:10px}.app{padding:10px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V1 · Ruleta europea · predicción por pockets</div></div>
+<button class="clear" id="clear">Borrar historial</button>
+</header>
+
+<div class="tabs">
+<button class="tab active" data-direction="CW">CW</button>
+<button class="tab" data-direction="CCW">CCW</button>
+</div>
+
+<div class="card">
+<h2>Introducir resultado</h2>
+<div class="grid" id="buttons"></div>
+</div>
+
+<div class="card">
+<h2>Último resultado <span class="muted" id="spinCount"></span></h2>
+<div class="last">
+<div id="lastBall" class="ball black">—</div>
+<div><div id="lastText">Sin resultados</div><div class="muted" id="lastInfo"></div></div>
+</div>
+</div>
+
+<div class="card">
+<h2>Predicción <span id="directionText">CW</span></h2>
+<div class="predictions">
+<div class="box main"><div class="label">PREDICCIÓN · 10 POCKETS</div><div class="value" id="prediction">—</div></div>
+<div class="box top"><div class="label">TOP · +5 CW</div><div class="value" id="top">—</div></div>
+<div class="box under"><div class="label">UNDER · −5 CCW</div><div class="value" id="under">—</div></div>
+</div>
+</div>
+
+<div class="card">
+<h2>Últimas 10 predicciones · <span id="tableDirection">CW</span></h2>
+<div class="muted" style="margin-bottom:8px">Cada predicción se evalúa con el siguiente resultado introducido.</div>
+<div class="table">
+<table>
+<thead><tr><th>#</th><th>Resultado usado</th><th>Predicción</th><th>TOP</th><th>UNDER</th><th>Real</th><th>Resultado</th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+</div>
+
+<div class="card">
+<h2>Estadísticas · <span id="statsDirection">CW</span></h2>
+<div class="stats" id="stats"></div>
+</div>
+</div>
+
+<script>
+'use strict';
+
+/*
+ RUEDA EUROPEA.
+ En esta aplicación:
+ CW  = índice + 1
+ CCW = índice - 1
+*/
+const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const STORAGE_KEY='roulette-pocket-predictor-v1-fixed';
+let direction='CW';
+
+function load(){
+ try{
+  const raw=localStorage.getItem(STORAGE_KEY);
+  const parsed=raw?JSON.parse(raw):[];
+  return Array.isArray(parsed)?parsed:[];
+ }catch(e){return []}
+}
+let spins=load();
+
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(spins));}
+
+function wheelShift(number,steps){
+ const index=WHEEL.indexOf(number);
+ if(index===-1) throw new Error('Número no encontrado: '+number);
+ return WHEEL[(index+steps+WHEEL.length)%WHEEL.length];
+}
+
+function makePrediction(number,dir){
+ const main=wheelShift(number,dir==='CW'?10:-10);
+ return {
+  prediction:main,
+  top:wheelShift(main,5),
+  under:wheelShift(main,-5)
+ };
+}
+
+function europeanColor(n){
+ if(n===0)return 'green';
+ const reds=[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+ return reds.includes(n)?'red':'black';
+}
+
+function outcome(real,p){
+ if(real===undefined)return 'PENDIENTE';
+ if(real===p.prediction)return 'PREDICCIÓN';
+ if(real===p.top)return 'TOP';
+ if(real===p.under)return 'UNDER';
+ return 'MISS';
+}
+
+function addResult(number){
+ const previous=spins.length?spins[spins.length-1]:null;
+ if(previous && previous.real===null){
+  previous.real=number;
+  previous.outcomeCW=outcome(number,previous.cw);
+  previous.outcomeCCW=outcome(number,previous.ccw);
+ }
+ const cw=makePrediction(number,'CW');
+ const ccw=makePrediction(number,'CCW');
+ spins.push({
+  number:number,
+  real:null,
+  cw:cw,
+  ccw:ccw,
+  outcomeCW:'PENDIENTE',
+  outcomeCCW:'PENDIENTE',
+  timestamp:Date.now()
+ });
+ save();
+ render();
+}
+
+function render(){
+ const last=spins.length?spins[spins.length-1]:null;
+ document.getElementById('spinCount').textContent='· '+spins.length+' spins';
+ const ball=document.getElementById('lastBall');
+ if(last){
+  ball.textContent=last.number;
+  ball.className='ball '+europeanColor(last.number);
+  document.getElementById('lastText').textContent='Resultado actual: '+last.number;
+  document.getElementById('lastInfo').textContent=new Date(last.timestamp).toLocaleString();
+ }else{
+  ball.textContent='—';ball.className='ball black';
+  document.getElementById('lastText').textContent='Sin resultados';
+  document.getElementById('lastInfo').textContent='';
+ }
+
+ document.getElementById('directionText').textContent=direction;
+ document.getElementById('tableDirection').textContent=direction;
+ document.getElementById('statsDirection').textContent=direction;
+
+ const p=last?(direction==='CW'?last.cw:last.ccw):null;
+ document.getElementById('prediction').textContent=p?p.prediction:'—';
+ document.getElementById('top').textContent=p?p.top:'—';
+ document.getElementById('under').textContent=p?p.under:'—';
+
+ const completed=[];
+ for(let i=0;i<spins.length-1;i++){
+  const s=spins[i];
+  const pred=direction==='CW'?s.cw:s.ccw;
+  const real=spins[i+1].number;
+  completed.push({index:i+1,used:s.number,pred:pred.prediction,top:pred.top,under:pred.under,real:real,result:outcome(real,pred)});
+ }
+ const visible=completed.slice(-10).reverse();
+ const tbody=document.getElementById('rows');
+ tbody.innerHTML='';
+ if(!visible.length){
+  tbody.innerHTML='<tr><td colspan="7" class="muted">Todavía no hay predicciones evaluadas.</td></tr>';
+ }else{
+  visible.forEach(r=>{
+   const cls=r.result==='MISS'?'miss':'hit';
+   tbody.insertAdjacentHTML('beforeend',
+    '<tr><td>'+r.index+'</td><td>'+r.used+'</td><td>'+r.pred+'</td><td>'+r.top+'</td><td>'+r.under+'</td><td>'+r.real+'</td><td class="'+cls+'">'+r.result+'</td></tr>'
+   );
+  });
+ }
+
+ const results=completed.map(x=>x.result);
+ const total=results.length;
+ const pred=results.filter(x=>x==='PREDICCIÓN').length;
+ const top=results.filter(x=>x==='TOP').length;
+ const under=results.filter(x=>x==='UNDER').length;
+ const miss=results.filter(x=>x==='MISS').length;
+ const hits=pred+top+under;
+ const pct=total?((hits/total)*100).toFixed(1):'0.0';
+
+ const stats=[
+ ['Evaluadas',total],['Predicción',pred],['TOP',top],['UNDER',under],
+ ['MISS',miss],['3 posiciones',hits],['% acierto',pct+'%'],['Últimas 10',Math.min(total,10)]
+ ];
+ document.getElementById('stats').innerHTML=stats.map(x=>'<div class="stat"><b>'+x[1]+'</b><span>'+x[0]+'</span></div>').join('');
+}
+
+function buildButtons(){
+ const container=document.getElementById('buttons');
+ for(let n=0;n<=36;n++){
+  const b=document.createElement('button');
+  b.type='button';
+  b.className='num '+europeanColor(n);
+  b.textContent=n;
+  b.addEventListener('click',()=>addResult(n));
+  container.appendChild(b);
+ }
+}
+
+document.querySelectorAll('.tab').forEach(tab=>{
+ tab.addEventListener('click',()=>{
+  direction=tab.dataset.direction;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  render();
+ });
+});
+
+document.getElementById('clear').addEventListener('click',()=>{
+ if(confirm('¿Borrar todo el historial guardado?')){
+  spins=[];
+  save();
+  render();
+ }
+});
+
+buildButtons();
+render();
+
+/* Verificación interna de la lógica solicitada */
+console.assert(makePrediction(17,'CW').prediction===10);
+console.assert(makePrediction(17,'CW').top===1);
+console.assert(makePrediction(17,'CW').under===36);
+console.assert(makePrediction(17,'CCW').prediction===3);
+console.assert(makePrediction(17,'CCW').top===19);
+console.assert(makePrediction(17,'CCW').under===29);
+</script>
+</body>
+</html>
