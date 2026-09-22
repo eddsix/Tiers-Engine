@@ -69,7 +69,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V1.6 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V1.7 · Ruleta europea · predicción por pockets</div></div>
 <button class="clear" id="clear">Borrar historial</button>
 </header>
 
@@ -81,6 +81,12 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <div class="card">
 <h2>Introducir resultado</h2>
 <div class="grid" id="buttons"></div>
+</div>
+
+<div class="card history-analysis">
+<h2>Recomendación basada en estadísticas</h2>
+<p class="analysis-intro">La recomendación se genera únicamente cuando el historial disponible de la condición actual es suficientemente amplio y muestra una ventaja histórica clara frente a la frecuencia global. Si no se cumplen los criterios, se muestra NO APOSTAR.</p>
+<div id="recommendations"></div>
 </div>
 
 <div class="card">
@@ -141,11 +147,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <div class="stats" id="stats"></div>
 </div>
 
-<div class="card history-analysis">
-<h2>Recomendación basada en estadísticas</h2>
-<p class="analysis-intro">La recomendación se genera únicamente cuando el historial disponible de la condición actual es suficientemente amplio y muestra una ventaja histórica clara frente a la frecuencia global. Si no se cumplen los criterios, se muestra NO APOSTAR.</p>
-<div id="recommendations"></div>
-</div>
+
 
 <div class="card history-analysis">
 <h2>Análisis histórico completo</h2>
@@ -423,9 +425,28 @@ function exactStreakRecord(seq, type, len){
  return m[type+len] || {n:0,nextW:0,nextL:0};
 }
 
+function walkForwardMetaStats(seq){
+ const MIN_CASES=8, MIN_ADVANTAGE=10;
+ let signals=0,wins=0,losses=0;
+ for(let i=1;i<seq.length;i++){
+  const past=seq.slice(0,i);
+  if(past.length<MIN_CASES) continue;
+  const st=trailingStreak(past);
+  if(!st.len) continue;
+  const rec=exactStreakRecord(past,st.type,st.len);
+  if(rec.n<MIN_CASES) continue;
+  const base=100*past.filter(x=>x==='W').length/past.length;
+  const rate=100*rec.nextW/rec.n;
+  if(rate-base>=MIN_ADVANTAGE){
+   signals++;
+   if(seq[i]==='W') wins++; else losses++;
+  }
+ }
+ return {signals,wins,losses,hitRate:signals?100*wins/signals:null};
+}
+
 function recommendationFor(dir){
- const MIN_CASES=8;
- const MIN_ADVANTAGE=10; // puntos porcentuales sobre la frecuencia global
+ const MIN_CASES=8, MIN_ADVANTAGE=10, MIN_OOS_SIGNALS=5, MIN_OOS_RATE=55;
  const candidates=[];
  for(const signal of ['prediction','top','under']){
   const seq=getCompletedSignalSequence(dir,signal);
@@ -437,13 +458,15 @@ function recommendationFor(dir){
   if(!st.len) continue;
   const rec=exactStreakRecord(seq,st.type,st.len);
   const rate=rec.n?100*rec.nextW/rec.n:null;
+  const oos=walkForwardMetaStats(seq);
   if(rec.n>=MIN_CASES && rate!==null){
-   candidates.push({signal,total,baseline,st,rec,rate,advantage:rate-baseline});
+   candidates.push({signal,total,baseline,st,rec,rate,advantage:rate-baseline,oos,
+    eligible:oos.signals>=MIN_OOS_SIGNALS && oos.hitRate!==null && oos.hitRate>=MIN_OOS_RATE});
   }
  }
- candidates.sort((a,b)=>b.advantage-a.advantage || b.rate-a.rate || b.rec.n-a.rec.n);
- const best=candidates[0];
- return {best,candidates,MIN_CASES,MIN_ADVANTAGE};
+ const eligible=candidates.filter(x=>x.eligible);
+ eligible.sort((a,b)=>b.oos.hitRate-a.oos.hitRate || b.advantage-a.advantage || b.rec.n-a.rec.n);
+ return {best:eligible[0]||null,candidates,MIN_CASES,MIN_ADVANTAGE,MIN_OOS_SIGNALS,MIN_OOS_RATE};
 }
 
 function renderRecommendationCard(dir){
@@ -461,12 +484,13 @@ function renderRecommendationCard(dir){
   const rec=st.len?exactStreakRecord(seq,st.type,st.len):{n:0,nextW:0,nextL:0};
   const rate=rec.n?100*rec.nextW/rec.n:null;
   const adv=rate!==null&&baseline!==null?rate-baseline:null;
-  return `<tr><td>${({prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'})[signal]}</td><td>${st.len?st.type+' × '+st.len:'—'}</td><td>${rec.n}</td><td>${rate===null?'—':rate.toFixed(1)+'%'}</td><td>${adv===null?'—':(adv>=0?'+':'')+adv.toFixed(1)+' pp'}</td></tr>`;
+  const oos=walkForwardMetaStats(seq);
+  return `<tr><td>${({prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'})[signal]}</td><td>${st.len?st.type+' × '+st.len:'—'}</td><td>${rec.n}</td><td>${rate===null?'—':rate.toFixed(1)+'%'}</td><td>${adv===null?'—':(adv>=0?'+':'')+adv.toFixed(1)+' pp'}</td><td>${oos.signals}</td><td>${oos.hitRate===null?'—':oos.hitRate.toFixed(1)+'%'}</td></tr>`;
  }).join('');
  const detail=b
-  ? `Condición actual: ${b.st.type==='W'?'racha de victorias':'racha de derrotas'} × ${b.st.len}. En ${b.rec.n} casos históricos con esa misma racha, el siguiente resultado fue W en ${b.rec.nextW} ocasiones (${b.rate.toFixed(1)}%). Frecuencia W global de esta señal: ${b.baseline.toFixed(1)}%. Ventaja observada: ${(b.advantage>=0?'+':'')+b.advantage.toFixed(1)} puntos.`
-  : `No existe todavía una condición actual con al menos ${r.MIN_CASES} casos históricos comparables.`;
- return `<section class="recommend-card"><h3>${dir==='CW'?'CLOCKWISE':'COUNTERCLOCKWISE'}</h3><div class="recommend-main ${cls}">${recommendation}</div><div class="recommend-detail">${detail}</div><div class="analysis-note">Criterio: mínimo ${r.MIN_CASES} casos para la racha actual y una frecuencia histórica al menos ${r.MIN_ADVANTAGE} puntos porcentuales superior a la frecuencia global de la señal.</div><div class="analysis-table-wrap"><table class="recommend-table"><thead><tr><th>Señal</th><th>Racha actual</th><th>Casos</th><th>Siguiente W</th><th>Ventaja</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+  ? `Condición actual: ${b.st.type==='W'?'racha de victorias':'racha de derrotas'} × ${b.st.len}. Históricamente, ${b.rec.n} casos comparables dieron W ${b.rec.nextW} veces (${b.rate.toFixed(1)}%), frente a ${b.baseline.toFixed(1)}% global. Validación walk-forward: ${b.oos.signals} señales históricas y ${b.oos.hitRate.toFixed(1)}% de acierto.`
+  : `No hay evidencia suficiente para activar una recomendación: se exige muestra comparable y validación walk-forward.`;
+ return `<section class="recommend-card"><h3>${dir==='CW'?'CLOCKWISE':'COUNTERCLOCKWISE'}</h3><div class="recommend-main ${cls}">${recommendation}</div><div class="recommend-detail">${detail}</div><div class="analysis-note">Criterios: mínimo ${r.MIN_CASES} casos comparables, ventaja ≥ ${r.MIN_ADVANTAGE} pp, al menos ${r.MIN_OOS_SIGNALS} señales walk-forward y ≥ ${r.MIN_OOS_RATE}% de acierto fuera de muestra.</div><div class="analysis-table-wrap"><table class="recommend-table"><thead><tr><th>Señal</th><th>Racha</th><th>Casos</th><th>W histórica</th><th>Ventaja</th><th>OOS</th><th>W OOS</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
 }
 
 function renderRecommendations(){
