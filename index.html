@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Roulette Pocket Predictor V1.5</title>
+<title>Roulette Pocket Predictor V2.1</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1020;color:#f8fafc;font-family:Arial,sans-serif}
@@ -55,21 +55,12 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 .patterns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}.pattern-card{background:#111827;border-radius:8px;padding:7px}.pattern-card .pattern{font-weight:bold;font-size:11px}.pattern-card small{display:block;color:#64748b;font-size:9px;margin-top:2px}
 @media(max-width:800px){.analysis-grid{grid-template-columns:1fr}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-.recommend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.recommend-card{background:#0b1220;border:1px solid #263244;border-radius:12px;padding:14px}
-.recommend-card h3{margin:0 0 10px;font-size:15px}
-.recommend-main{font-size:21px;font-weight:800;padding:12px;border-radius:10px;background:#111827;border:1px solid #334155}
-.recommend-main.no{color:#fbbf24}.recommend-main.yes{color:#4ade80}
-.recommend-detail{font-size:11px;line-height:1.5;color:#94a3b8;margin-top:9px}
-.recommend-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:11px}
-.recommend-table th,.recommend-table td{padding:6px 4px;border-bottom:1px solid #263244;text-align:center}
-@media(max-width:800px){.recommend-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V1.7 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.1 · Ruleta europea · predicción por pockets</div></div>
 <button class="clear" id="clear">Borrar historial</button>
 </header>
 
@@ -83,11 +74,6 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <div class="grid" id="buttons"></div>
 </div>
 
-<div class="card history-analysis">
-<h2>Recomendación basada en estadísticas</h2>
-<p class="analysis-intro">La recomendación se genera únicamente cuando el historial disponible de la condición actual es suficientemente amplio y muestra una ventaja histórica clara frente a la frecuencia global. Si no se cumplen los criterios, se muestra NO APOSTAR.</p>
-<div id="recommendations"></div>
-</div>
 
 <div class="card">
 <h2>Último resultado <span class="muted" id="spinCount"></span></h2>
@@ -108,7 +94,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 
 <div class="card">
 <h2>Historial completo · <span id="tableDirection">CW</span></h2>
-<div class="muted" style="margin-bottom:8px">Se muestran todos los registros acumulados; cada señal gana dentro de ±4 pockets.</div>
+<div class="muted" style="margin-bottom:8px">Se muestran todos los registros acumulados; cada señal gana dentro de ±4 pockets físicos.</div>
 <div class="table">
 <table>
 <thead><tr><th>#</th><th>Resultado usado</th><th>Predicción</th><th>TOP</th><th>UNDER</th><th>Real</th><th>Resultado</th></tr></thead>
@@ -313,15 +299,18 @@ function render(){
  document.getElementById('prediction').textContent=p?p.prediction:'—';
  document.getElementById('top').textContent=p?p.top:'—';
  document.getElementById('under').textContent=p?p.under:'—';
- document.getElementById('topLabel').textContent=dir==='CW'?'TOP · +5 CW':'TOP · −5 CCW';
- document.getElementById('underLabel').textContent=dir==='CW'?'UNDER · −5 CCW':'UNDER · +5 CW';
+ document.getElementById('topLabel').textContent=direction==='CW'?'TOP · +5 CW':'TOP · −5 CCW';
+ document.getElementById('underLabel').textContent=direction==='CW'?'UNDER · −5 CCW':'UNDER · +5 CW';
 
  const completed=[];
  for(let i=0;i<spins.length-1;i++){
   const s=spins[i];
   const pred=direction==='CW'?s.cw:s.ccw;
   const real=spins[i+1].number;
-  completed.push({index:i+1,used:s.number,pred:pred.prediction,top:pred.top,under:pred.under,real:real,result:outcome(real,pred)});
+  const predWin=isWithinPocketRange(real,pred.prediction,4);
+  const topWin=isWithinPocketRange(real,pred.top,4);
+  const underWin=isWithinPocketRange(real,pred.under,4);
+  completed.push({index:i+1,used:s.number,pred:pred.prediction,top:pred.top,under:pred.under,real:real,result:(predWin||topWin||underWin)?'WIN':'LOSE'});
  }
  const visible=completed.slice().reverse();
  const tbody=document.getElementById('rows');
@@ -330,7 +319,7 @@ function render(){
   tbody.innerHTML='<tr><td colspan="7" class="muted">Todavía no hay predicciones evaluadas.</td></tr>';
  }else{
   visible.forEach(r=>{
-   const cls=r.result==='MISS'?'miss':'hit';
+   const cls=r.result==='LOSE'?'miss':'hit';
    tbody.insertAdjacentHTML('beforeend',
     '<tr><td>'+r.index+'</td><td>'+r.used+'</td><td>'+r.pred+'</td><td>'+r.top+'</td><td>'+r.under+'</td><td>'+r.real+'</td><td class="'+cls+'">'+r.result+'</td></tr>'
    );
@@ -339,11 +328,11 @@ function render(){
 
  const results=completed;
  const total=results.length;
- const pred=results.filter(x=>x.result==='PREDICCIÓN').length;
- const top=results.filter(x=>x.result==='TOP').length;
- const under=results.filter(x=>x.result==='UNDER').length;
- const miss=results.filter(x=>x.result==='MISS').length;
- const hits=pred+top+under;
+ const pred=results.filter(x=>isWithinPocketRange(x.real,x.pred,4)).length;
+ const top=results.filter(x=>isWithinPocketRange(x.real,x.top,4)).length;
+ const under=results.filter(x=>isWithinPocketRange(x.real,x.under,4)).length;
+ const miss=results.filter(x=>x.result==='LOSE').length;
+ const hits=results.filter(x=>x.result==='WIN').length;
  const pct=total?((hits/total)*100).toFixed(1):'0.0';
 
  const stats=[
@@ -428,60 +417,8 @@ function exactStreakRecord(seq, type, len){
  return m[type+len] || {n:0,nextW:0,nextL:0};
 }
 
-function recommendationFor(dir){
- const MIN_CASES=8;
- const MIN_ADVANTAGE=10; // puntos porcentuales sobre la frecuencia global
- const candidates=[];
- for(const signal of ['prediction','top','under']){
-  const seq=getCompletedSignalSequence(dir,signal);
-  const total=seq.length;
-  if(!total) continue;
-  const wins=seq.filter(x=>x==='W').length;
-  const baseline=100*wins/total;
-  const st=trailingStreak(seq);
-  if(!st.len) continue;
-  const rec=exactStreakRecord(seq,st.type,st.len);
-  const rate=rec.n?100*rec.nextW/rec.n:null;
-  if(rec.n>=MIN_CASES && rate!==null){
-   candidates.push({signal,total,baseline,st,rec,rate,advantage:rate-baseline});
-  }
- }
- candidates.sort((a,b)=>b.advantage-a.advantage || b.rate-a.rate || b.rec.n-a.rec.n);
- const best=candidates[0];
- return {best,candidates,MIN_CASES,MIN_ADVANTAGE};
-}
-
-function renderRecommendationCard(dir){
- const r=recommendationFor(dir);
- const b=r.best;
- let recommendation='NO APOSTAR';
- let cls='no';
- if(b && b.advantage>=r.MIN_ADVANTAGE){
-  recommendation='APOSTAR: '+({prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'}[b.signal]);
-  cls='yes';
- }
- const rows=['prediction','top','under'].map(signal=>{
-  const seq=getCompletedSignalSequence(dir,signal);
-  const total=seq.length, wins=seq.filter(x=>x==='W').length, baseline=total?100*wins/total:null, st=trailingStreak(seq);
-  const rec=st.len?exactStreakRecord(seq,st.type,st.len):{n:0,nextW:0,nextL:0};
-  const rate=rec.n?100*rec.nextW/rec.n:null;
-  const adv=rate!==null&&baseline!==null?rate-baseline:null;
-  return `<tr><td>${({prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'})[signal]}</td><td>${st.len?st.type+' × '+st.len:'—'}</td><td>${rec.n}</td><td>${rate===null?'—':rate.toFixed(1)+'%'}</td><td>${adv===null?'—':(adv>=0?'+':'')+adv.toFixed(1)+' pp'}</td></tr>`;
- }).join('');
- const detail=b
-  ? `Condición actual: ${b.st.type==='W'?'racha de victorias':'racha de derrotas'} × ${b.st.len}. En ${b.rec.n} casos históricos con esa misma racha, el siguiente resultado fue W en ${b.rec.nextW} ocasiones (${b.rate.toFixed(1)}%). Frecuencia W global de esta señal: ${b.baseline.toFixed(1)}%. Ventaja observada: ${(b.advantage>=0?'+':'')+b.advantage.toFixed(1)} puntos.`
-  : `No existe todavía una condición actual con al menos ${r.MIN_CASES} casos históricos comparables.`;
- return `<section class="recommend-card"><h3>${dir==='CW'?'CLOCKWISE':'COUNTERCLOCKWISE'}</h3><div class="recommend-main ${cls}">${recommendation}</div><div class="recommend-detail">${detail}</div><div class="analysis-note">Criterio: mínimo ${r.MIN_CASES} casos para la racha actual y una frecuencia histórica al menos ${r.MIN_ADVANTAGE} puntos porcentuales superior a la frecuencia global de la señal.</div><div class="analysis-table-wrap"><table class="recommend-table"><thead><tr><th>Señal</th><th>Racha actual</th><th>Casos</th><th>Siguiente W</th><th>Ventaja</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
-}
-
-function renderRecommendations(){
- const host=document.getElementById('recommendations'); if(!host)return;
- host.innerHTML=`<div class="recommend-grid">${renderRecommendationCard('CW')}${renderRecommendationCard('CCW')}</div><div class="analysis-note">La recomendación es una regla estadística basada exclusivamente en el historial de la aplicación. No supone que una racha deba romperse y puede cambiar cuando entren nuevos resultados.</div>`;
-}
-
 function renderHistoricalAnalysis(){
  const host=document.getElementById('historical-analysis'); if(!host)return;
- renderRecommendations();
  host.innerHTML=`<div class="analysis-grid"><section class="analysis-direction"><h3>CLOCKWISE</h3>${renderSignalHistory('CW','prediction','Predicción')}${renderSignalHistory('CW','top','TOP')}${renderSignalHistory('CW','under','UNDER')}</section><section class="analysis-direction"><h3>COUNTERCLOCKWISE</h3>${renderSignalHistory('CCW','prediction','Predicción')}${renderSignalHistory('CCW','top','TOP')}${renderSignalHistory('CCW','under','UNDER')}</section></div><div class="analysis-note">W = el siguiente resultado cayó dentro de ±4 bolsillos físicos del objetivo; L = no cayó. Las frecuencias mostradas son observaciones históricas de la aplicación y no implican que el siguiente giro tenga que repetir el patrón.</div>`;
 }
 
