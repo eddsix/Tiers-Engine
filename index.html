@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Roulette Pocket Predictor V2.4</title>
+<title>Roulette Pocket Predictor V2.6</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1020;color:#f8fafc;font-family:Arial,sans-serif}
@@ -69,7 +69,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.4 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.6 · Ruleta europea · predicción por pockets</div></div>
 <button class="clear" id="clear">Borrar historial</button>
 </header>
 
@@ -324,11 +324,11 @@ function render(){
   const predWin=isWithinPocketRange(real,pred.prediction,4);
   const topWin=isWithinPocketRange(real,pred.top,4);
   const underWin=isWithinPocketRange(real,pred.under,4);
-  let result='LOSE';
+  let result=direction==='CW'?'CWLOSE':'CCWLOSE';
   if(predWin) result=direction==='CW'?'CWPREDICCION':'CCWPREDICCION';
   else if(topWin) result=direction==='CW'?'CWTOP':'CCWTOP';
   else if(underWin) result=direction==='CW'?'CWUNDER':'CCWUNDER';
-  completed.push({index:i+1,used:s.number,pred:pred.prediction,top:pred.top,under:pred.under,real:real,result,win:result!=='LOSE'});
+  completed.push({index:i+1,used:s.number,pred:pred.prediction,top:pred.top,under:pred.under,real:real,result,win:result!=='CWLOSE'&&result!=='CCWLOSE'});
  }
  const visible=completed.slice().reverse();
  const tbody=document.getElementById('rows');
@@ -349,7 +349,7 @@ function render(){
  const pred=results.filter(x=>isWithinPocketRange(x.real,x.pred,4)).length;
  const top=results.filter(x=>isWithinPocketRange(x.real,x.top,4)).length;
  const under=results.filter(x=>isWithinPocketRange(x.real,x.under,4)).length;
- const miss=results.filter(x=>x.result==='LOSE').length;
+ const miss=results.filter(x=>!x.win).length;
  const hits=results.filter(x=>x.result==='WIN').length;
  const pct=total?((hits/total)*100).toFixed(1):'0.0';
 
