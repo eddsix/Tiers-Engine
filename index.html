@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Roulette Pocket Predictor V2.6</title>
+<title>Roulette Pocket Predictor V2.7</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1020;color:#f8fafc;font-family:Arial,sans-serif}
@@ -69,7 +69,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.6 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.7 · Ruleta europea · predicción por pockets</div></div>
 <button class="clear" id="clear">Borrar historial</button>
 </header>
 
@@ -324,11 +324,27 @@ function render(){
   const predWin=isWithinPocketRange(real,pred.prediction,4);
   const topWin=isWithinPocketRange(real,pred.top,4);
   const underWin=isWithinPocketRange(real,pred.under,4);
-  let result=direction==='CW'?'CWLOSE':'CCWLOSE';
-  if(predWin) result=direction==='CW'?'CWPREDICCION':'CCWPREDICCION';
-  else if(topWin) result=direction==='CW'?'CWTOP':'CCWTOP';
-  else if(underWin) result=direction==='CW'?'CWUNDER':'CCWUNDER';
-  completed.push({index:i+1,used:s.number,pred:pred.prediction,top:pred.top,under:pred.under,real:real,result,win:result!=='CWLOSE'&&result!=='CCWLOSE'});
+  const cw=s.cw;
+  const ccw=s.ccw;
+  const cwPred=isWithinPocketRange(real,cw.prediction,4);
+  const cwTop=isWithinPocketRange(real,cw.top,4);
+  const cwUnder=isWithinPocketRange(real,cw.under,4);
+  const ccwPred=isWithinPocketRange(real,ccw.prediction,4);
+  const ccwTop=isWithinPocketRange(real,ccw.top,4);
+  const ccwUnder=isWithinPocketRange(real,ccw.under,4);
+  const cwResult=cwPred?'CWPREDICCION':cwTop?'CWTOP':cwUnder?'CWUNDER':'MISS';
+  const ccwResult=ccwPred?'CCWPREDICCION':ccwTop?'CCWTOP':ccwUnder?'CCWUNDER':'MISS';
+  const currentWin=direction==='CW'?(cwResult!=='MISS'):(ccwResult!=='MISS');
+  // La etiqueta muestra el resultado real de la señal que acertó, aunque
+  // pertenezca a la dirección contraria a la pestaña activa. Por eso,
+  // estando en CCW, un CWTOP se muestra como CWTOP (en rojo).
+  let result=direction==='CW'?cwResult:ccwResult;
+  let win=currentWin;
+  if(!currentWin){
+   const opposite=direction==='CW'?ccwResult:cwResult;
+   if(opposite!=='MISS') result=opposite;
+  }
+  completed.push({index:i+1,used:s.number,pred:pred.prediction,top:pred.top,under:pred.under,real:real,result,win});
  }
  const visible=completed.slice().reverse();
  const tbody=document.getElementById('rows');
@@ -350,7 +366,7 @@ function render(){
  const top=results.filter(x=>isWithinPocketRange(x.real,x.top,4)).length;
  const under=results.filter(x=>isWithinPocketRange(x.real,x.under,4)).length;
  const miss=results.filter(x=>!x.win).length;
- const hits=results.filter(x=>x.result==='WIN').length;
+ const hits=results.filter(x=>x.win).length;
  const pct=total?((hits/total)*100).toFixed(1):'0.0';
 
  const stats=[
@@ -419,7 +435,7 @@ function renderStreakTable(seq){
 }
 function renderPatterns(seq){
  const blocks=[];
- for(const len of [2,3,4]){
+ for(const len of [3,4,5,6,7,8]){
   const entries=Object.values(patternStats(seq,len)).filter(x=>x.n>=2).sort((a,b)=>b.n-a.n||b.nextW-a.nextW).slice(0,8);
   if(!entries.length)continue;
   blocks.push(`<div class="analysis-note">Patrones de ${len} resultados (mínimo 2 casos)</div><div class="patterns">${entries.map(x=>`<div class="pattern-card"><div class="pattern">${x.pattern} → ${fmtHistPct(x.nextW,x.n)} W</div><small>n=${x.n} · siguiente W ${x.nextW} · L ${x.nextL}</small></div>`).join('')}</div>`);
@@ -429,7 +445,7 @@ function renderPatterns(seq){
 function renderSignalHistory(dir,signal,label){
  const seq=getCompletedSignalSequence(dir,signal), total=seq.length, wins=seq.filter(x=>x==='W').length;
  const st=trailingStreak(seq);
- return `<div class="signal-analysis"><h4>${label}<span class="badge">${total} evaluaciones históricas</span></h4><div class="metric-grid"><div class="metric"><small>Racha actual</small><strong>${st.len?st.type+' × '+st.len:'—'}</strong></div><div class="metric"><small>Máx. victorias</small><strong>${maxStreak(seq,'W')}</strong></div><div class="metric"><small>Máx. derrotas</small><strong>${maxStreak(seq,'L')}</strong></div><div class="metric"><small>Frecuencia W total</small><strong>${fmtHistPct(wins,total)}</strong></div></div><div class="analysis-note"><b>Después de rachas exactas:</b> qué ocurrió inmediatamente después de una racha que terminó con esa longitud.</div>${renderStreakTable(seq)}<div class="analysis-note"><b>Patrones:</b> secuencias históricas de 2, 3 y 4 resultados y el resultado observado inmediatamente después.</div>${renderPatterns(seq)}</div>`;
+ return `<div class="signal-analysis"><h4>${label}<span class="badge">${total} evaluaciones históricas</span></h4><div class="metric-grid"><div class="metric"><small>Racha actual</small><strong>${st.len?st.type+' × '+st.len:'—'}</strong></div><div class="metric"><small>Máx. victorias</small><strong>${maxStreak(seq,'W')}</strong></div><div class="metric"><small>Máx. derrotas</small><strong>${maxStreak(seq,'L')}</strong></div><div class="metric"><small>Frecuencia W total</small><strong>${fmtHistPct(wins,total)}</strong></div></div><div class="analysis-note"><b>Después de rachas exactas:</b> qué ocurrió inmediatamente después de una racha que terminó con esa longitud.</div>${renderStreakTable(seq)}<div class="analysis-note"><b>Patrones:</b> secuencias históricas de 3 a 8 resultados y el resultado observado inmediatamente después.</div>${renderPatterns(seq)}</div>`;
 }
 function exactStreakRecord(seq, type, len){
  const m=exactStreakTransitions(seq);
@@ -440,28 +456,45 @@ function predictionSignalStats(dir,signal){
  const seq=getCompletedSignalSequence(dir,signal);
  const total=seq.length;
  if(total<3)return null;
+
+ // El motor SOLO compara sufijos exactos de la secuencia actual.
+ // Ejemplo: si termina WLWLWW, busca WLWLWW; si no hay evidencia suficiente,
+ // baja a LWLWW, WLWW, LWW. Nunca sustituye el patrón por otro diferente.
+ const maxLen=Math.min(8,total);
  const evidence=[];
- let weightedSum=0,weightTotal=0;
- // La predicción usa exclusivamente patrones históricos repetidos de 3 o más resultados.
- const maxLen=Math.min(8,total-1);
- for(let len=3;len<=maxLen;len++){
+ for(let len=maxLen;len>=3;len--){
   const pattern=seq.slice(-len).join('');
-  const m=patternStats(seq,len)[pattern];
-  if(m && m.n>=2){
-   const rate=100*m.nextW/m.n;
-   const w=len*Math.min(4,1+Math.log2(m.n));
-   weightedSum += rate*w;
-   weightTotal += w;
-   evidence.push({label:'patrón '+pattern,rate,n:m.n,len,weight:w});
+  const stats=patternStats(seq,len)[pattern];
+  if(stats && stats.n>=2){
+   const rate=100*stats.nextW/stats.n;
+   evidence.push({
+    label:'patrón '+pattern,
+    pattern,
+    rate,
+    n:stats.n,
+    nextW:stats.nextW,
+    nextL:stats.nextL,
+    len
+   });
   }
  }
+
  if(!evidence.length)return null;
- const score=weightedSum/weightTotal;
- const evidenceCases=evidence.reduce((a,e)=>a+e.n,0);
- const longest=Math.max(...evidence.map(e=>e.len));
- const confidence=Math.min(100,20+longest*8+Math.min(45,evidenceCases*2));
- return {dir,signal,total,score,confidence,evidence,longest};
+
+ // Se usa como base el patrón exacto más largo con al menos 2 antecedentes.
+ // Los patrones más cortos se muestran como contexto, pero no pueden reemplazar
+ // a uno más largo que ya tenga evidencia suficiente.
+ const primary=evidence[0];
+ const score=primary.rate;
+ const confidence=Math.min(100,20+primary.len*8+Math.min(40,primary.n*5));
+
+ return {
+  dir,signal,total,score,confidence,evidence,
+  longest:primary.len,primary,
+  currentPattern:seq.slice(-maxLen).join('')
+ };
 }
+
 function buildHistoricalPrediction(){
  const candidates=[];
  for(const dir of ['CW','CCW']){
@@ -471,11 +504,24 @@ function buildHistoricalPrediction(){
   }
  }
  if(!candidates.length)return null;
- candidates.sort((a,b)=>b.score-a.score || b.longest-a.longest || b.total-a.total);
+
+ // Primero prima la longitud del patrón exacto actual con evidencia;
+ // después su frecuencia histórica de W y finalmente el número de casos.
+ candidates.sort((a,b)=>
+  b.primary.len-a.primary.len ||
+  b.score-a.score ||
+  b.primary.n-a.primary.n ||
+  b.total-a.total
+ );
+
  const best=candidates[0];
  const second=candidates[1];
- const gap=second?Math.abs(best.score-second.score):100;
- const status=second && gap<2?'unclear':'signal';
+
+ // Solo consideramos empate si compiten con la misma longitud de patrón.
+ const comparable=second && second.primary.len===best.primary.len;
+ const gap=comparable?Math.abs(best.score-second.score):100;
+ const status=comparable && gap<2?'unclear':'signal';
+
  return {status,best,second,gap,candidates};
 }
 
@@ -483,22 +529,26 @@ function renderEnginePrediction(){
  const host=document.getElementById('engine-prediction');
  if(!host)return;
  const r=buildHistoricalPrediction();
- if(!r){host.innerHTML='<div class="analysis-note">Aún no hay evaluaciones históricas.</div>';return;}
- if(r.status==='insufficient'){
-  host.innerHTML='<div class="analysis-note">Aún no hay al menos 4 evaluaciones para generar una señal basada en el histórico completo.</div>';
+
+ if(!r){
+  host.innerHTML='<div class="analysis-note">Aún no existe un patrón actual de 3 o más resultados que se haya observado al menos 2 veces anteriormente.</div>';
   return;
  }
+
  if(r.status==='unclear'){
-  host.innerHTML=`<div class="engine-result"><div class="engine-main"><div class="eyebrow">SEÑAL HISTÓRICA</div><div class="signal">SIN SEÑAL CLARA</div></div><div class="engine-detail">Las mejores condiciones históricas están demasiado próximas entre sí (${r.gap.toFixed(1)} puntos de diferencia).<br><br>La aplicación no fuerza una elección entre CW/CCW ni entre PREDICCIÓN/TOP/UNDER cuando los datos no separan claramente las alternativas.</div></div><div class="engine-note">El motor utiliza únicamente patrones históricos repetidos de 3 o más resultados. La puntuación es un índice comparativo del histórico, no una probabilidad matemática del próximo giro.</div>`;
+  const a=r.best, b=r.second;
+  host.innerHTML=`<div class="engine-result"><div class="engine-main"><div class="eyebrow">SEÑAL HISTÓRICA</div><div class="signal">SIN SEÑAL CLARA</div></div><div class="engine-detail"><b>Patrones actuales comparados</b><br>${a.dir} ${a.signal.toUpperCase()}: ${a.primary.pattern} · ${a.primary.rate.toFixed(1)}% W (n=${a.primary.n})<br>${b.dir} ${b.signal.toUpperCase()}: ${b.primary.pattern} · ${b.primary.rate.toFixed(1)}% W (n=${b.primary.n})<br><br>Diferencia: ${r.gap.toFixed(1)} puntos.</div></div><div class="engine-note">Solo se buscan coincidencias exactas con el final de la secuencia W/L actual. Nunca se utiliza un patrón distinto al que está ocurriendo.</div>`;
   return;
  }
+
  const labels={prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'};
  const b=r.best;
- const dirLabel=b.dir==='CW'?'CW':'CCW';
- const ev=b.evidence.slice(0,5).map(e=>`${e.label}: ${e.rate.toFixed(1)}% (n=${e.n})`).join(' · ');
- host.innerHTML=`<div class="engine-result"><div class="engine-main"><div class="eyebrow">SEÑAL HISTÓRICA</div><div class="signal">${dirLabel} · ${labels[b.signal]}</div><div class="muted" style="margin-top:6px">Índice histórico: ${b.score.toFixed(1)} · Confianza de datos: ${b.confidence.toFixed(0)}/100</div></div><div class="engine-detail"><b>Base de la señal</b><br>Patrones usados: ${b.evidence.length}.<br>Patrón más largo utilizado: ${b.longest} resultados.<br>${ev||'Sin patrones repetidos suficientes.'}</div></div><div class="engine-note">La señal selecciona la combinación CW/CCW + PREDICCIÓN/TOP/UNDER con mayor índice entre los patrones históricos repetidos de 3 o más resultados. No implica que el próximo resultado tenga una probabilidad real superior; sirve como clasificación basada en los datos acumulados.</div>`;
-}
+ const p=b.primary;
+ const currentFull=getCompletedSignalSequence(b.dir,b.signal).slice(-Math.min(8,b.total)).join(' ');
+ const evidence=b.evidence.map(e=>`${e.pattern.split('').join(' ')}: ${e.n} casos · siguiente W ${e.nextW} (${e.rate.toFixed(1)}%) · L ${e.nextL} (${(100-e.rate).toFixed(1)}%)`).join('<br>');
 
+ host.innerHTML=`<div class="engine-result"><div class="engine-main"><div class="eyebrow">SEÑAL HISTÓRICA</div><div class="signal">${b.dir} · ${labels[b.signal]}</div><div class="muted" style="margin-top:6px">Patrón base: ${p.pattern.split('').join(' ')} · Confianza de datos: ${b.confidence.toFixed(0)}/100</div></div><div class="engine-detail"><b>Patrón actual:</b> ${currentFull}<br><b>Base utilizada:</b> ${p.pattern.split('').join(' ')}<br><b>Coincidencias:</b> ${p.n}<br><b>Después del patrón:</b> W ${p.nextW} (${p.rate.toFixed(1)}%) · L ${p.nextL} (${(100-p.rate).toFixed(1)}%)<br><br><b>Coincidencias exactas disponibles:</b><br>${evidence}</div></div><div class="engine-note">El motor empieza por el patrón actual más largo disponible (hasta 8 resultados) y baja progresivamente hasta 3 únicamente cuando el patrón más largo no tiene al menos 2 antecedentes históricos. No utiliza patrones diferentes al final actual de la secuencia.</div>`;
+}
 function renderHistoricalAnalysis(){
  const host=document.getElementById('historical-analysis'); if(!host)return;
  host.innerHTML=`<div class="analysis-grid"><section class="analysis-direction"><h3>CLOCKWISE</h3>${renderSignalHistory('CW','prediction','Predicción')}${renderSignalHistory('CW','top','TOP')}${renderSignalHistory('CW','under','UNDER')}</section><section class="analysis-direction"><h3>COUNTERCLOCKWISE</h3>${renderSignalHistory('CCW','prediction','Predicción')}${renderSignalHistory('CCW','top','TOP')}${renderSignalHistory('CCW','under','UNDER')}</section></div><div class="analysis-note">W = el siguiente resultado cayó dentro de ±4 bolsillos físicos del objetivo; L = no cayó. Las frecuencias mostradas son observaciones históricas de la aplicación y no implican que el siguiente giro tenga que repetir el patrón.</div>`;
