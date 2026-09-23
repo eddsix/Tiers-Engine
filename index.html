@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Roulette Pocket Predictor V1</title>
+<title>Roulette Pocket Predictor V1.9</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1020;color:#f8fafc;font-family:Arial,sans-serif}
@@ -38,12 +38,29 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:#0b1220;padding:10px;text-align:center;border-radius:9px}.stat b{font-size:19px;display:block}.stat span{font-size:11px;color:#94a3b8}
 @media(max-width:600px){.grid{grid-template-columns:repeat(6,1fr)}.predictions{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}header{align-items:flex-start;gap:10px}.app{padding:10px}}
+
+/* ===== V1.5 HISTORICAL ANALYSIS ===== */
+.history-analysis{margin-top:12px}
+.analysis-intro{font-size:13px;line-height:1.5;color:#94a3b8;margin:0 0 12px}
+.analysis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.analysis-direction{background:#0b1220;border:1px solid #263244;border-radius:12px;padding:12px}
+.analysis-direction h3{margin:0 0 10px;font-size:15px}
+.signal-analysis{border:1px solid #263244;border-radius:10px;padding:11px;margin-top:10px}
+.signal-analysis h4{margin:0 0 9px;font-size:14px}
+.badge{display:inline-block;margin-left:6px;padding:2px 6px;border-radius:999px;background:#172033;color:#94a3b8;font-size:10px;font-weight:normal}
+.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.metric{background:#111827;border-radius:8px;padding:8px}.metric small{display:block;color:#64748b;font-size:10px}.metric strong{display:block;margin-top:3px;font-size:15px}
+.analysis-table{width:100%;min-width:500px;border-collapse:collapse;font-size:11px;margin-top:7px}.analysis-table th,.analysis-table td{padding:6px 4px;border-bottom:1px solid #263244;text-align:center}.analysis-table th:first-child,.analysis-table td:first-child{text-align:left}
+.analysis-table-wrap{overflow-x:auto}.analysis-note{font-size:11px;line-height:1.45;color:#64748b;margin-top:8px}
+.patterns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}.pattern-card{background:#111827;border-radius:8px;padding:7px}.pattern-card .pattern{font-weight:bold;font-size:11px}.pattern-card small{display:block;color:#64748b;font-size:9px;margin-top:2px}
+@media(max-width:800px){.analysis-grid{grid-template-columns:1fr}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 </head>
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V1 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V1.9 · Ruleta europea · predicción por pockets</div></div>
 <button class="clear" id="clear">Borrar historial</button>
 </header>
 
@@ -76,7 +93,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 
 <div class="card">
 <h2>Historial completo · <span id="tableDirection">CW</span></h2>
-<div class="muted" style="margin-bottom:8px">Cada señal gana si el siguiente resultado está a 4 pockets o menos de su objetivo.</div>
+<div class="muted" style="margin-bottom:8px">Se muestran todos los registros acumulados. WIN = al menos una de las tres señales cae dentro de ±4 pockets; LOSE = ninguna.</div>
 <div class="table">
 <table>
 <thead><tr><th>#</th><th>Resultado usado</th><th>Predicción</th><th>TOP</th><th>UNDER</th><th>Real</th><th>Resultado</th></tr></thead>
@@ -113,6 +130,14 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <div class="card">
 <h2>Estadísticas · <span id="statsDirection">CW</span></h2>
 <div class="stats" id="stats"></div>
+</div>
+
+
+
+<div class="card history-analysis">
+<h2>Análisis histórico completo</h2>
+<p class="analysis-intro">Este módulo analiza todas las evaluaciones acumuladas, por separado para CLOCKWISE y COUNTERCLOCKWISE, y para Predicción, TOP y UNDER.</p>
+<div id="historical-analysis"><div class="analysis-note">Calculando análisis histórico…</div></div>
 </div>
 </div>
 
@@ -212,41 +237,33 @@ function addResult(number){
 
 function renderChart(elementId, dir){
  const el=document.getElementById(elementId);
- const completed=[];
+ const all=[];
  for(let i=0;i<spins.length-1;i++){
   const s=spins[i], p=dir==='CW'?s.cw:s.ccw, real=spins[i+1].number;
-  completed.push({
-   pred:isWithinPocketRange(real,p.prediction,4),
-   top:isWithinPocketRange(real,p.top,4),
-   under:isWithinPocketRange(real,p.under,4)
-  });
+  const predWin=isWithinPocketRange(real,p.prediction,4);
+  const topWin=isWithinPocketRange(real,p.top,4);
+  const underWin=isWithinPocketRange(real,p.under,4);
+  all.push({pred:predWin,top:topWin,under:underWin,coverage:predWin||topWin||underWin});
  }
+ const completed=all;
  if(!completed.length){
   el.innerHTML='<div style="height:100%;display:grid;place-items:center;color:#64748b">Aún no hay predicciones evaluadas.</div>';
   return;
  }
- let cp=0,ct=0,cu=0;
+ let cp=0,ct=0,cu=0,cc=0;
  const points=completed.map((r,i)=>{
   if(r.pred)cp++;
   if(r.top)ct++;
   if(r.under)cu++;
+  if(r.coverage)cc++;
   const n=i+1;
-  return {
-   x:n,
-   pred:cp/n*100,
-   top:ct/n*100,
-   under:cu/n*100,
-   coverage:(cp+ct+cu)/n*100
-  };
+  return {x:n,pred:cp/n*100,top:ct/n*100,under:cu/n*100,coverage:cc/n*100};
  });
-
  const w=900,h=270,padL=42,padR=15,padT=12,padB=28;
- const iw=w-padL-padR, ih=h-padT-padB;
+ const iw=w-padL-padR,ih=h-padT-padB;
  const x=i=>padL+(i/(points.length-1||1))*iw;
  const y=v=>padT+(100-v)/100*ih;
- const line=(key)=>{
-   return points.map((d,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(d[key]).toFixed(1)).join(' ');
- };
+ const line=key=>points.map((d,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(d[key]).toFixed(1)).join(' ');
  const grid=[0,25,50,75,100].map(v=>`<line x1="${padL}" x2="${w-padR}" y1="${y(v)}" y2="${y(v)}" stroke="#263244" stroke-width="1"/><text x="${padL-7}" y="${y(v)+4}" text-anchor="end" fill="#64748b" font-size="10">${v}%</text>`).join('');
  const xlabels=[0,Math.floor((points.length-1)/2),points.length-1].filter((v,i,a)=>a.indexOf(v)===i).map(i=>`<text x="${x(i)}" y="${h-7}" text-anchor="middle" fill="#64748b" font-size="10">${points[i].x}</text>`).join('');
  el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Gráfica ${dir}">
@@ -257,7 +274,6 @@ function renderChart(elementId, dir){
  <path d="${line('coverage')}" fill="none" stroke="#c084fc" stroke-width="2.5"/>
  </svg>`;
 }
-
 function render(){
  const last=spins.length?spins[spins.length-1]:null;
  document.getElementById('spinCount').textContent='· '+spins.length+' spins';
@@ -296,29 +312,155 @@ function render(){
   tbody.innerHTML='<tr><td colspan="7" class="muted">Todavía no hay predicciones evaluadas.</td></tr>';
  }else{
   visible.forEach(r=>{
-   const cls=r.result==='MISS'?'miss':'hit';
-   tbody.insertAdjacentHTML('beforeend',
-    '<tr><td>'+r.index+'</td><td>'+r.used+'</td><td>'+r.pred+'</td><td>'+r.top+'</td><td>'+r.under+'</td><td>'+r.real+'</td><td class="'+cls+'">'+r.result+'</td></tr>'
-   );
+   const win=isWithinPocketRange(r.real,r.pred,4)||isWithinPocketRange(r.real,r.top,4)||isWithinPocketRange(r.real,r.under,4); const status=win?'WIN':'LOSE'; const cls=win?'hit':'miss'; tbody.insertAdjacentHTML('beforeend','<tr><td>'+r.index+'</td><td>'+r.used+'</td><td>'+r.pred+'</td><td>'+r.top+'</td><td>'+r.under+'</td><td>'+r.real+'</td><td class="'+cls+'">'+status+'</td></tr>');
   });
  }
 
- const results=completed.map(x=>x.result);
+ const results=completed;
  const total=results.length;
- const pred=results.filter(x=>x==='PREDICCIÓN').length;
- const top=results.filter(x=>x==='TOP').length;
- const under=results.filter(x=>x==='UNDER').length;
- const miss=results.filter(x=>x==='MISS').length;
+ const pred=results.filter(x=>x.result==='PREDICCIÓN').length;
+ const top=results.filter(x=>x.result==='TOP').length;
+ const under=results.filter(x=>x.result==='UNDER').length;
+ const miss=results.filter(x=>x.result==='MISS').length;
  const hits=pred+top+under;
  const pct=total?((hits/total)*100).toFixed(1):'0.0';
 
  const stats=[
  ['Evaluadas',total],['Predicción',pred],['TOP',top],['UNDER',under],
- ['MISS',miss],['3 posiciones',hits],['% acierto',pct+'%'],['Historial',total]
+ ['MISS',miss],['3 posiciones',hits],['% acierto',pct+'%'],['Evaluaciones totales',total]
  ];
  document.getElementById('stats').innerHTML=stats.map(x=>'<div class="stat"><b>'+x[1]+'</b><span>'+x[0]+'</span></div>').join('');
  renderChart('chartCW','CW');
  renderChart('chartCCW','CCW');
+ renderHistoricalAnalysis();
+}
+
+
+/* ===== V1.5 FULL-HISTORY PATTERN ENGINE ===== */
+function getCompletedSignalSequence(dir,signal){
+ const seq=[];
+ for(let i=0;i<spins.length-1;i++){
+  const pred=dir==='CW'?spins[i].cw:spins[i].ccw;
+  const target=pred[signal];
+  const real=spins[i+1].number;
+  seq.push(isWithinPocketRange(real,target,4)?'W':'L');
+ }
+ return seq;
+}
+function trailingStreak(seq){
+ if(!seq.length)return {type:'—',len:0};
+ const type=seq[seq.length-1]; let len=1;
+ for(let i=seq.length-2;i>=0&&seq[i]===type;i--)len++;
+ return {type,len};
+}
+function maxStreak(seq,wanted){
+ let max=0,cur=0;
+ for(const x of seq){if(x===wanted){cur++;max=Math.max(max,cur)}else cur=0}
+ return max;
+}
+function exactStreakTransitions(seq){
+ const m={};
+ for(let i=0;i<seq.length-1;i++){
+  if(seq[i]===seq[i+1])continue;
+  let start=i;
+  while(start>0&&seq[start-1]===seq[i])start--;
+  const len=i-start+1,key=seq[i]+len;
+  if(!m[key])m[key]={streak:seq[i],len,n:0,nextW:0,nextL:0};
+  m[key].n++;
+  if(seq[i+1]==='W')m[key].nextW++;else m[key].nextL++;
+ }
+ return m;
+}
+function patternStats(seq,len){
+ const m={};
+ for(let i=0;i+len<seq.length;i++){
+  const key=seq.slice(i,i+len).join('');
+  if(!m[key])m[key]={pattern:key,n:0,nextW:0,nextL:0};
+  m[key].n++;
+  if(seq[i+len]==='W')m[key].nextW++;else m[key].nextL++;
+ }
+ return m;
+}
+function fmtHistPct(a,b){return b?(100*a/b).toFixed(1)+'%':'—'}
+function renderStreakTable(seq){
+ const m=exactStreakTransitions(seq), rows=[];
+ Object.values(m).sort((a,b)=>a.len-b.len||a.streak.localeCompare(b.streak)).forEach(x=>rows.push(`<tr><td>${x.streak==='W'?'Victorias':'Derrotas'} × ${x.len}</td><td>${x.n}</td><td>${x.nextW}</td><td>${x.nextL}</td><td>${fmtHistPct(x.nextW,x.n)}</td></tr>`));
+ if(!rows.length)return '<div class="analysis-note">Aún no existen suficientes evaluaciones para analizar el final de una racha.</div>';
+ return `<div class="analysis-table-wrap"><table class="analysis-table"><thead><tr><th>Racha exacta</th><th>Casos</th><th>Siguiente W</th><th>Siguiente L</th><th>Frecuencia W</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+}
+function renderPatterns(seq){
+ const blocks=[];
+ for(const len of [2,3,4]){
+  const entries=Object.values(patternStats(seq,len)).filter(x=>x.n>=2).sort((a,b)=>b.n-a.n||b.nextW-a.nextW).slice(0,8);
+  if(!entries.length)continue;
+  blocks.push(`<div class="analysis-note">Patrones de ${len} resultados (mínimo 2 casos)</div><div class="patterns">${entries.map(x=>`<div class="pattern-card"><div class="pattern">${x.pattern} → ${fmtHistPct(x.nextW,x.n)} W</div><small>n=${x.n} · siguiente W ${x.nextW} · L ${x.nextL}</small></div>`).join('')}</div>`);
+ }
+ return blocks.join('')||'<div class="analysis-note">Aún no hay suficientes datos para mostrar patrones repetidos.</div>';
+}
+function renderSignalHistory(dir,signal,label){
+ const seq=getCompletedSignalSequence(dir,signal), total=seq.length, wins=seq.filter(x=>x==='W').length;
+ const st=trailingStreak(seq);
+ return `<div class="signal-analysis"><h4>${label}<span class="badge">${total} evaluaciones históricas</span></h4><div class="metric-grid"><div class="metric"><small>Racha actual</small><strong>${st.len?st.type+' × '+st.len:'—'}</strong></div><div class="metric"><small>Máx. victorias</small><strong>${maxStreak(seq,'W')}</strong></div><div class="metric"><small>Máx. derrotas</small><strong>${maxStreak(seq,'L')}</strong></div><div class="metric"><small>Frecuencia W total</small><strong>${fmtHistPct(wins,total)}</strong></div></div><div class="analysis-note"><b>Después de rachas exactas:</b> qué ocurrió inmediatamente después de una racha que terminó con esa longitud.</div>${renderStreakTable(seq)}<div class="analysis-note"><b>Patrones:</b> secuencias históricas de 2, 3 y 4 resultados y el resultado observado inmediatamente después.</div>${renderPatterns(seq)}</div>`;
+}
+function exactStreakRecord(seq, type, len){
+ const m=exactStreakTransitions(seq);
+ return m[type+len] || {n:0,nextW:0,nextL:0};
+}
+
+function recommendationFor(dir){
+ const MIN_CASES=8;
+ const MIN_ADVANTAGE=10; // puntos porcentuales sobre la frecuencia global
+ const candidates=[];
+ for(const signal of ['prediction','top','under']){
+  const seq=getCompletedSignalSequence(dir,signal);
+  const total=seq.length;
+  if(!total) continue;
+  const wins=seq.filter(x=>x==='W').length;
+  const baseline=100*wins/total;
+  const st=trailingStreak(seq);
+  if(!st.len) continue;
+  const rec=exactStreakRecord(seq,st.type,st.len);
+  const rate=rec.n?100*rec.nextW/rec.n:null;
+  if(rec.n>=MIN_CASES && rate!==null){
+   candidates.push({signal,total,baseline,st,rec,rate,advantage:rate-baseline});
+  }
+ }
+ candidates.sort((a,b)=>b.advantage-a.advantage || b.rate-a.rate || b.rec.n-a.rec.n);
+ const best=candidates[0];
+ return {best,candidates,MIN_CASES,MIN_ADVANTAGE};
+}
+
+function renderRecommendationCard(dir){
+ const r=recommendationFor(dir);
+ const b=r.best;
+ let recommendation='NO APOSTAR';
+ let cls='no';
+ if(b && b.advantage>=r.MIN_ADVANTAGE){
+  recommendation='APOSTAR: '+({prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'}[b.signal]);
+  cls='yes';
+ }
+ const rows=['prediction','top','under'].map(signal=>{
+  const seq=getCompletedSignalSequence(dir,signal);
+  const total=seq.length, wins=seq.filter(x=>x==='W').length, baseline=total?100*wins/total:null, st=trailingStreak(seq);
+  const rec=st.len?exactStreakRecord(seq,st.type,st.len):{n:0,nextW:0,nextL:0};
+  const rate=rec.n?100*rec.nextW/rec.n:null;
+  const adv=rate!==null&&baseline!==null?rate-baseline:null;
+  return `<tr><td>${({prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'})[signal]}</td><td>${st.len?st.type+' × '+st.len:'—'}</td><td>${rec.n}</td><td>${rate===null?'—':rate.toFixed(1)+'%'}</td><td>${adv===null?'—':(adv>=0?'+':'')+adv.toFixed(1)+' pp'}</td></tr>`;
+ }).join('');
+ const detail=b
+  ? `Condición actual: ${b.st.type==='W'?'racha de victorias':'racha de derrotas'} × ${b.st.len}. En ${b.rec.n} casos históricos con esa misma racha, el siguiente resultado fue W en ${b.rec.nextW} ocasiones (${b.rate.toFixed(1)}%). Frecuencia W global de esta señal: ${b.baseline.toFixed(1)}%. Ventaja observada: ${(b.advantage>=0?'+':'')+b.advantage.toFixed(1)} puntos.`
+  : `No existe todavía una condición actual con al menos ${r.MIN_CASES} casos históricos comparables.`;
+ return `<section class="recommend-card"><h3>${dir==='CW'?'CLOCKWISE':'COUNTERCLOCKWISE'}</h3><div class="recommend-main ${cls}">${recommendation}</div><div class="recommend-detail">${detail}</div><div class="analysis-note">Criterio: mínimo ${r.MIN_CASES} casos para la racha actual y una frecuencia histórica al menos ${r.MIN_ADVANTAGE} puntos porcentuales superior a la frecuencia global de la señal.</div><div class="analysis-table-wrap"><table class="recommend-table"><thead><tr><th>Señal</th><th>Racha actual</th><th>Casos</th><th>Siguiente W</th><th>Ventaja</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+
+function renderRecommendations(){
+ const host=document.getElementById('recommendations'); if(!host)return;
+ host.innerHTML=`<div class="recommend-grid">${renderRecommendationCard('CW')}${renderRecommendationCard('CCW')}</div><div class="analysis-note">La recomendación es una regla estadística basada exclusivamente en el historial de la aplicación. No supone que una racha deba romperse y puede cambiar cuando entren nuevos resultados.</div>`;
+}
+
+function renderHistoricalAnalysis(){
+ const host=document.getElementById('historical-analysis'); if(!host)return;
+ host.innerHTML=`<div class="analysis-grid"><section class="analysis-direction"><h3>CLOCKWISE</h3>${renderSignalHistory('CW','prediction','Predicción')}${renderSignalHistory('CW','top','TOP')}${renderSignalHistory('CW','under','UNDER')}</section><section class="analysis-direction"><h3>COUNTERCLOCKWISE</h3>${renderSignalHistory('CCW','prediction','Predicción')}${renderSignalHistory('CCW','top','TOP')}${renderSignalHistory('CCW','under','UNDER')}</section></div><div class="analysis-note">W = el siguiente resultado cayó dentro de ±4 bolsillos físicos del objetivo; L = no cayó. Las frecuencias mostradas son observaciones históricas de la aplicación y no implican que el siguiente giro tenga que repetir el patrón.</div>`;
 }
 
 function buildButtons(){
