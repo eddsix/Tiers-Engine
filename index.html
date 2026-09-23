@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Roulette Pocket Predictor V2.11</title>
+<title>Roulette Pocket Predictor V2.12</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1020;color:#f8fafc;font-family:Arial,sans-serif}
@@ -71,7 +71,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.11 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.12 · Ruleta europea · predicción por pockets</div></div>
 <div class="header-actions"><button class="undo" id="undo" disabled>Deshacer</button><button class="clear" id="clear">Borrar historial</button></div>
 </header>
 
@@ -90,7 +90,16 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
 <label for="neighbors" class="muted">Radio físico alrededor del objetivo:</label>
 <select id="neighbors" style="background:#0b1220;color:#f8fafc;border:1px solid #475569;border-radius:8px;padding:9px 12px">
-${''.join(f'<option value="{i}"{' selected' if i==4 else ''}>{i} vecino{'s' if i!=1 else ''}</option>' for i in range(10))}
+<option value="0">0 vecinos</option>
+<option value="1">1 vecino</option>
+<option value="2">2 vecinos</option>
+<option value="3">3 vecinos</option>
+<option value="4" selected>4 vecinos</option>
+<option value="5">5 vecinos</option>
+<option value="6">6 vecinos</option>
+<option value="7">7 vecinos</option>
+<option value="8">8 vecinos</option>
+<option value="9">9 vecinos</option>
 </select>
 <span class="muted">0 = solo el objetivo · 9 = objetivo + 9 pockets a cada lado.</span>
 </div>
@@ -116,7 +125,7 @@ ${''.join(f'<option value="{i}"{' selected' if i==4 else ''}>{i} vecino{'s' if i
 <div class="predictions">
 <div class="box main"><div class="label">PREDICCIÓN · 10 POCKETS</div><div class="value" id="prediction">—</div></div>
 <div class="box top"><div class="label" id="topLabel">TOP · +5 CW</div><div class="value" id="top">—</div></div>
-<div class="box under"><div class="label" id="underLabel">UNDER · −5 CCW</div><div class="value" id="under">—</div></div><div class="muted" style="grid-column:1/-1;margin-top:2px">Ganador = resultado dentro del radio seleccionado de vecinos físicos del número objetivo.</div>
+<div class="box under"><div class="label" id="underLabel">UNDER · −5 CCW</div><div class="value" id="under">—</div></div><div class="muted" style="grid-column:1/-1;margin-top:2px">Acierto = resultado dentro del radio seleccionado de vecinos físicos del número objetivo. El radio se puede cambiar de 0 a 9.</div>
 </div>
 </div>
 
@@ -486,21 +495,25 @@ function buildHistoricalPrediction(){
 }
 function signalGroupStats(dir,signal){
  let wins=0,losses=0;
+ const labels=[];
  for(let i=0;i<spins.length-1;i++){
   const p=dir==='CW'?spins[i].cw:spins[i].ccw;
   const real=spins[i+1].number;
   const target=signal==='prediction'?p.prediction:signal==='top'?p.top:p.under;
-  if(isWithinPocketRange(real,target,neighbors))wins++;else losses++;
+  const hit=isWithinPocketRange(real,target,neighbors);
+  if(hit)wins++; else losses++;
+  labels.push(hit?'W':'L');
  }
  const total=wins+losses;
- return {wins,losses,total,pct:total?(wins/total*100):0};
+ return {wins,losses,total,pct:total?(wins/total*100):0,labels};
 }
 function renderGroupStats(dir){
  const items=[['prediction','PREDICCIÓN'],['top','TOP'],['under','UNDER']].map(([key,label])=>{
   const s=signalGroupStats(dir,key);
-  return `<div class="group-stat"><b>${label}</b><small>Aciertos ${s.wins} · Fallos ${s.losses}</small><span class="rate">${s.total?s.pct.toFixed(1):'0.0'}%</span></div>`;
+  const last=s.labels.slice(-10).join(' · ') || '—';
+  return `<div class="group-stat"><b>${label}</b><small>Aciertos: ${s.wins} · Fallos: ${s.losses}</small><span class="rate">${s.total?s.pct.toFixed(1):'0.0'}%</span><small>Últimos: ${last}</small></div>`;
  }).join('');
- return `<div class="analysis-note"><b>Estadísticas por grupo</b> · ${neighbors} vecino${neighbors===1?'':'s'}</div><div class="group-stats">${items}</div>`;
+ return `<div class="analysis-note"><b>Estadísticas propias de las predicciones</b> · ${dir} · ${neighbors} vecino${neighbors===1?'':'s'}</div><div class="group-stats">${items}</div>`;
 }
 function renderDirectionPredictionBlock(a){
  if(!a)return '<section class="prediction-direction"><h4>Sin datos</h4></section>';
