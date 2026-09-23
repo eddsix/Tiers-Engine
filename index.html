@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Roulette Pocket Predictor V2.14</title>
+<title>Roulette Pocket Predictor V2.15</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1020;color:#f8fafc;font-family:Arial,sans-serif}
@@ -71,7 +71,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.14 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.15 · Ruleta europea · predicción por pockets</div></div>
 <div class="header-actions"><button class="undo" id="undo" disabled>Deshacer</button><button class="clear" id="clear">Borrar historial</button></div>
 </header>
 
@@ -409,7 +409,7 @@ function render(){
 }
 
 
-/* ===== V2.14 EXACT OUTCOME PATTERN ENGINE ===== */
+/* ===== V2.15 EXACT OUTCOME PATTERN ENGINE ===== */
 function getDirectionOutcomes(dir){
  const seq=[];
  for(let i=0;i<spins.length-1;i++){
@@ -470,7 +470,7 @@ function directionAnalysis(dir){
   const pattern=outcomes.slice(-len).map(x=>x.result);
   const key=pattern.join(' → ');
   const stats=directionPatternStats(outcomes,len)[key];
-  if(stats && stats.n>=2){
+  if(stats && stats.n>=1){
    const nextEntries=Object.entries(stats.next).sort((a,b)=>b[1]-a[1]);
    const dominant=nextEntries[0]?.[0]||null;
    const dominantRate=nextEntries[0]?100*nextEntries[0][1]/stats.n:0;
@@ -483,8 +483,7 @@ function directionAnalysis(dir){
   }
  }
 
- // Si ni siquiera el patrón exacto de 3 tiene 2 coincidencias,
- // se conserva como evidencia insuficiente para mostrarlo en pantalla.
+ // Si no existe ninguna coincidencia histórica del patrón de 3, no hay señal.
  if(!evidence.length){
   const pattern=outcomes.slice(-3).map(x=>x.result);
   const stats=directionPatternStats(outcomes,3)[pattern.join(' → ')];
@@ -500,7 +499,7 @@ function directionAnalysis(dir){
   }
  }
 
- const primary=evidence[0]&&evidence[0].n>=2?evidence[0]:null;
+ const primary=evidence[0]&&evidence[0].n>=1?evidence[0]:null;
  const confidence=primary?Math.min(100,25+primary.len*7+Math.min(40,primary.n*5)):0;
  return {dir,outcomes,wl,currentPattern,streak:trailingStreak(wl),evidence,primary,confidence};
 }
@@ -567,6 +566,7 @@ function renderDirectionPredictionBlock(a){
   ${p
    ? `<b>Patrón utilizado:</b> ${p.pattern.join(' → ')}<br>
       <b>Coincidencias:</b> ${p.n}<br>
+      <b>Fuerza de evidencia:</b> ${p.n===1?'1 caso histórico (débil)':'múltiples casos históricos'}<br>
       <b>Después del patrón:</b> ${nextText}<br>
       <b>Resultado más frecuente:</b> ${p.dominant} (${p.dominantRate.toFixed(1)}%)`
    : '<b>Patrones:</b> sin evidencia suficiente'}
@@ -590,7 +590,7 @@ function renderEnginePrediction(){
   host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="eyebrow">COMPARACIÓN CW / CCW</div><div class="signal">SIN SEÑAL CLARA</div></div><div class="engine-detail">Las dos direcciones tienen patrones actuales de igual longitud y evidencia similar.</div></div><div class="engine-note">La comparación se realiza entre el análisis global de CW y el análisis global de CCW.</div>`;return;
  }
  const b=r.best,p=b.primary;
- host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="eyebrow">COMPARACIÓN CW / CCW</div><div class="signal">${b.dir} · ${p.signal}</div><div class="muted" style="margin-top:6px">Patrón: ${p.pattern.split('').join(' ')} · Coincidencias: ${p.n}</div></div><div class="engine-detail"><b>Dirección seleccionada por el análisis histórico:</b> ${b.dir}<br><b>Después del patrón:</b> W ${p.rate.toFixed(1)}% · L ${(100-p.rate).toFixed(1)}%<br><b>Señal más frecuente después:</b> ${p.signal}<br><br>La selección se realiza después de analizar la secuencia completa de CW y la secuencia completa de CCW, incluyendo rachas y patrones exactos de 3 o más resultados.</div></div><div class="engine-note">CW y CCW se mantienen completamente separados. Los patrones no se reducen a W/L: CWTOP → CWTOP → CWUNDER solo coincide con esa misma secuencia exacta. Si un patrón largo no se repite al menos 2 veces, el motor retrocede hasta el patrón exacto de 3 resultados.</div>`;
+ host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="eyebrow">COMPARACIÓN CW / CCW</div><div class="signal">${b.dir} · ${p.dominant || '—'}</div><div class="muted" style="margin-top:6px">Patrón: ${p.pattern.join(' → ')} · Coincidencias: ${p.n}</div></div><div class="engine-detail"><b>Dirección seleccionada por el análisis histórico:</b> ${b.dir}<br><b>Después del patrón:</b> W ${p.winRate.toFixed(1)}% · L ${(100-p.winRate).toFixed(1)}%<br><b>Señal más frecuente después:</b> ${p.dominant || '—'}<br><br>La selección se realiza después de analizar la secuencia completa de CW y la secuencia completa de CCW, incluyendo rachas y patrones exactos de 3 o más resultados.</div></div><div class="engine-note">CW y CCW se mantienen completamente separados. Los patrones no se reducen a W/L: CWTOP → CWTOP → CWUNDER solo coincide con esa misma secuencia exacta. Si un patrón largo no se repite, el motor retrocede progresivamente hasta el patrón exacto de 3 resultados. Una única coincidencia histórica se muestra como evidencia, pero se distingue de una señal con múltiples casos.</div>`;
 }
 
 function renderStreakTable(seq){
