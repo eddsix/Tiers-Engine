@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Roulette Pocket Predictor V2.8</title>
+<title>Roulette Pocket Predictor V2.11</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1020;color:#f8fafc;font-family:Arial,sans-serif}
 .app{max-width:1000px;margin:auto;padding:16px}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.header-actions{display:flex;gap:8px;align-items:center}
 h1{font-size:24px;margin:0}.muted{color:#94a3b8;font-size:13px}
 button{font:inherit;cursor:pointer}
-.clear{background:#291218;color:#fecdd3;border:1px solid #7f1d1d;border-radius:9px;padding:9px 12px}
+.undo{background:#172033;color:#cbd5e1;border:1px solid #475569;border-radius:9px;padding:9px 12px}.clear{background:#291218;color:#fecdd3;border:1px solid #7f1d1d;border-radius:9px;padding:9px 12px}
 .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .tab{padding:13px;border-radius:10px;border:1px solid #334155;background:#111827;color:#cbd5e1;font-weight:bold}
 .tab.active{background:#172554;border-color:#3b82f6;color:#fff}
@@ -65,14 +65,14 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 @media(max-width:600px){.engine-result{grid-template-columns:1fr}}
 
 
-.prediction-both-directions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}.prediction-direction{border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--panel)}.prediction-direction h4{margin:0 0 10px}.prediction-direction-main{font-size:13px;line-height:1.55;margin-bottom:10px}.prediction-signal-list{display:grid;gap:6px}.prediction-signal-row{display:grid;grid-template-columns:90px 1fr 45px 70px;gap:8px;font-size:12px;padding:7px 0;border-top:1px solid var(--border)}@media(max-width:800px){.prediction-both-directions{grid-template-columns:1fr}.prediction-signal-row{grid-template-columns:80px 1fr 40px 60px;font-size:11px}}
+.prediction-both-directions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}.prediction-direction{border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--panel)}.prediction-direction h4{margin:0 0 10px}.prediction-direction-main{font-size:13px;line-height:1.55;margin-bottom:10px}.group-stats{margin-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.group-stat{background:#111827;border:1px solid #263244;border-radius:8px;padding:8px;text-align:center}.group-stat b{display:block;font-size:12px}.group-stat small{display:block;color:#94a3b8;font-size:10px;margin-top:3px}.group-stat .rate{font-size:14px;margin-top:4px}@media(max-width:600px){.group-stats{grid-template-columns:1fr}}.prediction-signal-list{display:grid;gap:6px}.prediction-signal-row{display:grid;grid-template-columns:90px 1fr 45px 70px;gap:8px;font-size:12px;padding:7px 0;border-top:1px solid var(--border)}@media(max-width:800px){.prediction-both-directions{grid-template-columns:1fr}.prediction-signal-row{grid-template-columns:80px 1fr 40px 60px;font-size:11px}}
 </style>
 </head>
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.10 · Ruleta europea · predicción por pockets</div></div>
-<button class="clear" id="clear">Borrar historial</button>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.11 · Ruleta europea · predicción por pockets</div></div>
+<div class="header-actions"><button class="undo" id="undo" disabled>Deshacer</button><button class="clear" id="clear">Borrar historial</button></div>
 </header>
 
 <div class="tabs">
@@ -83,6 +83,17 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <div class="card">
 <h2>Introducir resultado</h2>
 <div class="grid" id="buttons"></div>
+</div>
+
+<div class="card">
+<h2>Vecinos para evaluar</h2>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<label for="neighbors" class="muted">Radio físico alrededor del objetivo:</label>
+<select id="neighbors" style="background:#0b1220;color:#f8fafc;border:1px solid #475569;border-radius:8px;padding:9px 12px">
+${''.join(f'<option value="{i}"{' selected' if i==4 else ''}>{i} vecino{'s' if i!=1 else ''}</option>' for i in range(10))}
+</select>
+<span class="muted">0 = solo el objetivo · 9 = objetivo + 9 pockets a cada lado.</span>
+</div>
 </div>
 
 
@@ -105,13 +116,13 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <div class="predictions">
 <div class="box main"><div class="label">PREDICCIÓN · 10 POCKETS</div><div class="value" id="prediction">—</div></div>
 <div class="box top"><div class="label" id="topLabel">TOP · +5 CW</div><div class="value" id="top">—</div></div>
-<div class="box under"><div class="label" id="underLabel">UNDER · −5 CCW</div><div class="value" id="under">—</div></div><div class="muted" style="grid-column:1/-1;margin-top:2px">Ganador = resultado dentro de ±4 pockets del número objetivo.</div>
+<div class="box under"><div class="label" id="underLabel">UNDER · −5 CCW</div><div class="value" id="under">—</div></div><div class="muted" style="grid-column:1/-1;margin-top:2px">Ganador = resultado dentro del radio seleccionado de vecinos físicos del número objetivo.</div>
 </div>
 </div>
 
 <div class="card">
 <h2>Historial completo · <span id="tableDirection">CW</span></h2>
-<div class="muted" style="margin-bottom:8px">Se muestran todos los registros acumulados; cada señal gana dentro de ±4 pockets físicos.</div>
+<div class="muted" style="margin-bottom:8px">Se muestran todos los registros acumulados; cada señal gana dentro del radio seleccionado de vecinos físicos.</div>
 <div class="table">
 <table>
 <thead><tr><th>#</th><th>Resultado usado</th><th>Predicción</th><th>TOP</th><th>UNDER</th><th>Real</th><th>Resultado</th></tr></thead>
@@ -172,6 +183,8 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const STORAGE_KEY='roulette-pocket-predictor-v1-fixed';
 let direction='CW';
+let neighbors=Number(localStorage.getItem('roulette-pocket-neighbors') ?? 4);
+if(!Number.isInteger(neighbors)||neighbors<0||neighbors>9)neighbors=4;
 
 function load(){
  try{
@@ -220,9 +233,9 @@ function outcome(real,p){
 
  // Cada señal gana si el resultado real está a 4 pockets o menos
  // de su número objetivo, contando el objetivo: -4 ... 0 ... +4.
- const predictionWin=isWithinPocketRange(real,p.prediction,4);
- const topWin=isWithinPocketRange(real,p.top,4);
- const underWin=isWithinPocketRange(real,p.under,4);
+ const predictionWin=isWithinPocketRange(real,p.prediction,neighbors);
+ const topWin=isWithinPocketRange(real,p.top,neighbors);
+ const underWin=isWithinPocketRange(real,p.under,neighbors);
 
  // En caso de solapamiento, se informa la primera coincidencia
  // siguiendo la prioridad: Predicción > TOP > UNDER.
@@ -260,9 +273,9 @@ function renderChart(elementId, dir){
  const all=[];
  for(let i=0;i<spins.length-1;i++){
   const s=spins[i], p=dir==='CW'?s.cw:s.ccw, real=spins[i+1].number;
-  const predWin=isWithinPocketRange(real,p.prediction,4);
-  const topWin=isWithinPocketRange(real,p.top,4);
-  const underWin=isWithinPocketRange(real,p.under,4);
+  const predWin=isWithinPocketRange(real,p.prediction,neighbors);
+  const topWin=isWithinPocketRange(real,p.top,neighbors);
+  const underWin=isWithinPocketRange(real,p.under,neighbors);
   all.push({pred:predWin,top:topWin,under:underWin,coverage:predWin||topWin||underWin});
  }
  const completed=all;
@@ -296,6 +309,8 @@ function renderChart(elementId, dir){
 }
 function render(){
  const last=spins.length?spins[spins.length-1]:null;
+ const undoBtn=document.getElementById('undo'); if(undoBtn)undoBtn.disabled=!spins.length;
+ const neighborSelect=document.getElementById('neighbors'); if(neighborSelect)neighborSelect.value=String(neighbors);
  document.getElementById('spinCount').textContent='· '+spins.length+' spins';
  const ball=document.getElementById('lastBall');
  if(last){
@@ -325,17 +340,17 @@ function render(){
   const s=spins[i];
   const pred=direction==='CW'?s.cw:s.ccw;
   const real=spins[i+1].number;
-  const predWin=isWithinPocketRange(real,pred.prediction,4);
-  const topWin=isWithinPocketRange(real,pred.top,4);
-  const underWin=isWithinPocketRange(real,pred.under,4);
+  const predWin=isWithinPocketRange(real,pred.prediction,neighbors);
+  const topWin=isWithinPocketRange(real,pred.top,neighbors);
+  const underWin=isWithinPocketRange(real,pred.under,neighbors);
   const cw=s.cw;
   const ccw=s.ccw;
-  const cwPred=isWithinPocketRange(real,cw.prediction,4);
-  const cwTop=isWithinPocketRange(real,cw.top,4);
-  const cwUnder=isWithinPocketRange(real,cw.under,4);
-  const ccwPred=isWithinPocketRange(real,ccw.prediction,4);
-  const ccwTop=isWithinPocketRange(real,ccw.top,4);
-  const ccwUnder=isWithinPocketRange(real,ccw.under,4);
+  const cwPred=isWithinPocketRange(real,cw.prediction,neighbors);
+  const cwTop=isWithinPocketRange(real,cw.top,neighbors);
+  const cwUnder=isWithinPocketRange(real,cw.under,neighbors);
+  const ccwPred=isWithinPocketRange(real,ccw.prediction,neighbors);
+  const ccwTop=isWithinPocketRange(real,ccw.top,neighbors);
+  const ccwUnder=isWithinPocketRange(real,ccw.under,neighbors);
   const cwResult=cwPred?'CWPREDICCION':cwTop?'CWTOP':cwUnder?'CWUNDER':'MISS';
   const ccwResult=ccwPred?'CCWPREDICCION':ccwTop?'CCWTOP':ccwUnder?'CCWUNDER':'MISS';
   const currentWin=direction==='CW'?(cwResult!=='MISS'):(ccwResult!=='MISS');
@@ -366,9 +381,9 @@ function render(){
 
  const results=completed;
  const total=results.length;
- const pred=results.filter(x=>isWithinPocketRange(x.real,x.pred,4)).length;
- const top=results.filter(x=>isWithinPocketRange(x.real,x.top,4)).length;
- const under=results.filter(x=>isWithinPocketRange(x.real,x.under,4)).length;
+ const pred=results.filter(x=>isWithinPocketRange(x.real,x.pred,neighbors)).length;
+ const top=results.filter(x=>isWithinPocketRange(x.real,x.top,neighbors)).length;
+ const under=results.filter(x=>isWithinPocketRange(x.real,x.under,neighbors)).length;
  const miss=results.filter(x=>!x.win).length;
  const hits=results.filter(x=>x.win).length;
  const pct=total?((hits/total)*100).toFixed(1):'0.0';
@@ -469,14 +484,29 @@ function buildHistoricalPrediction(){
  }
  return {CW,CCW,best,second,status,gap};
 }
+function signalGroupStats(dir,signal){
+ let wins=0,losses=0;
+ for(let i=0;i<spins.length-1;i++){
+  const p=dir==='CW'?spins[i].cw:spins[i].ccw;
+  const real=spins[i+1].number;
+  const target=signal==='prediction'?p.prediction:signal==='top'?p.top:p.under;
+  if(isWithinPocketRange(real,target,neighbors))wins++;else losses++;
+ }
+ const total=wins+losses;
+ return {wins,losses,total,pct:total?(wins/total*100):0};
+}
+function renderGroupStats(dir){
+ const items=[['prediction','PREDICCIÓN'],['top','TOP'],['under','UNDER']].map(([key,label])=>{
+  const s=signalGroupStats(dir,key);
+  return `<div class="group-stat"><b>${label}</b><small>Aciertos ${s.wins} · Fallos ${s.losses}</small><span class="rate">${s.total?s.pct.toFixed(1):'0.0'}%</span></div>`;
+ }).join('');
+ return `<div class="analysis-note"><b>Estadísticas por grupo</b> · ${neighbors} vecino${neighbors===1?'':'s'}</div><div class="group-stats">${items}</div>`;
+}
 function renderDirectionPredictionBlock(a){
  if(!a)return '<section class="prediction-direction"><h4>Sin datos</h4></section>';
- const labels=a.outcomes.map(x=>x.result);
- const signalCounts={PREDICCIÓN:0,TOP:0,UNDER:0,MISS:0};
- labels.forEach(x=>{if(signalCounts[x]!==undefined)signalCounts[x]++});
  const p=a.primary;
  const evidenceRows=a.evidence.slice(0,5).map(e=>`<div class="prediction-signal-row"><span><b>${e.pattern.split('').join(' ')}</b></span><span>n=${e.n}</span><span>W ${e.rate.toFixed(1)}%</span><span>${formatSignalCounts(e.nextSignals)}</span></div>`).join('');
- return `<section class="prediction-direction"><h4>${a.dir==='CW'?'CW · CLOCKWISE':'CCW · COUNTERCLOCKWISE'}</h4><div class="prediction-direction-main"><b>Racha actual:</b> ${a.streak.type} × ${a.streak.len}<br><b>Patrón actual:</b> ${a.currentPattern.split('').join(' ')}<br>${p?`<b>Patrón utilizado:</b> ${p.pattern.split('').join(' ')}<br><b>Coincidencias:</b> ${p.n}<br><b>Después del patrón:</b> W ${p.rate.toFixed(1)}% · L ${(100-p.rate).toFixed(1)}%<br><b>Señal más frecuente después:</b> ${p.signal}`:'<b>Patrones:</b> sin evidencia suficiente'}</div><div class="prediction-signal-list"><div class="prediction-signal-row"><span><b>Historial de esta dirección</b></span><span>W=${a.wl.filter(x=>x==='W').length}</span><span>L=${a.wl.filter(x=>x==='L').length}</span></div>${evidenceRows}</div></section>`;
+ return `<section class="prediction-direction"><h4>${a.dir==='CW'?'CW · CLOCKWISE':'CCW · COUNTERCLOCKWISE'}</h4><div class="prediction-direction-main"><b>Racha actual:</b> ${a.streak.type} × ${a.streak.len}<br><b>Patrón actual:</b> ${a.currentPattern.split('').join(' ')}<br>${p?`<b>Patrón utilizado:</b> ${p.pattern.split('').join(' ')}<br><b>Coincidencias:</b> ${p.n}<br><b>Después del patrón:</b> W ${p.rate.toFixed(1)}% · L ${(100-p.rate).toFixed(1)}%<br><b>Señal más frecuente después:</b> ${p.signal}`:'<b>Patrones:</b> sin evidencia suficiente'}</div>${renderGroupStats(a.dir)}<div class="prediction-signal-list"><div class="prediction-signal-row"><span><b>Historial de esta dirección</b></span><span>W=${a.wl.filter(x=>x==='W').length}</span><span>L=${a.wl.filter(x=>x==='L').length}</span></div>${evidenceRows}</div></section>`;
 }
 function renderEnginePrediction(){
  const host=document.getElementById('engine-prediction'); if(!host)return;
@@ -520,7 +550,7 @@ function exactStreakRecord(seq, type, len){
 
 function renderHistoricalAnalysis(){
  const host=document.getElementById('historical-analysis'); if(!host)return;
- host.innerHTML=`<div class="analysis-grid"><section class="analysis-direction"><h3>CLOCKWISE</h3>${renderSignalHistory('CW','prediction','Predicción')}${renderSignalHistory('CW','top','TOP')}${renderSignalHistory('CW','under','UNDER')}</section><section class="analysis-direction"><h3>COUNTERCLOCKWISE</h3>${renderSignalHistory('CCW','prediction','Predicción')}${renderSignalHistory('CCW','top','TOP')}${renderSignalHistory('CCW','under','UNDER')}</section></div><div class="analysis-note">W = el siguiente resultado cayó dentro de ±4 bolsillos físicos del objetivo; L = no cayó. Las frecuencias mostradas son observaciones históricas de la aplicación y no implican que el siguiente giro tenga que repetir el patrón.</div>`;
+ host.innerHTML=`<div class="analysis-grid"><section class="analysis-direction"><h3>CLOCKWISE</h3>${renderSignalHistory('CW','prediction','Predicción')}${renderSignalHistory('CW','top','TOP')}${renderSignalHistory('CW','under','UNDER')}</section><section class="analysis-direction"><h3>COUNTERCLOCKWISE</h3>${renderSignalHistory('CCW','prediction','Predicción')}${renderSignalHistory('CCW','top','TOP')}${renderSignalHistory('CCW','under','UNDER')}</section></div><div class="analysis-note">W = el siguiente resultado cayó dentro del radio seleccionado de vecinos físicos del objetivo; L = no cayó. Las frecuencias mostradas son observaciones históricas de la aplicación y no implican que el siguiente giro tenga que repetir el patrón.</div>`;
 }
 
 function buildButtons(){
@@ -552,6 +582,23 @@ document.getElementById('clear').addEventListener('click',()=>{
  }
 });
 
+document.getElementById('undo').addEventListener('click',()=>{
+ if(!spins.length)return;
+ spins.pop();
+ save();
+ render();
+});
+
+document.getElementById('neighbors').addEventListener('change',(e)=>{
+ const value=Number(e.target.value);
+ if(Number.isInteger(value)&&value>=0&&value<=9){
+  neighbors=value;
+  localStorage.setItem('roulette-pocket-neighbors',String(neighbors));
+  render();
+ }
+});
+
+document.getElementById('neighbors').value=String(neighbors);
 buildButtons();
 render();
 
