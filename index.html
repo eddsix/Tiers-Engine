@@ -55,6 +55,15 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 .patterns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}.pattern-card{background:#111827;border-radius:8px;padding:7px}.pattern-card .pattern{font-weight:bold;font-size:11px}.pattern-card small{display:block;color:#64748b;font-size:9px;margin-top:2px}
 @media(max-width:800px){.analysis-grid{grid-template-columns:1fr}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+.prediction-engine{border:1px solid #3b82f6;background:#0b1220}
+.engine-result{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
+.engine-main{background:#111827;border:1px solid #2563eb;border-radius:10px;padding:14px}
+.engine-main .eyebrow{font-size:11px;color:#94a3b8}
+.engine-main .signal{font-size:28px;font-weight:800;margin-top:5px}
+.engine-detail{background:#111827;border:1px solid #263244;border-radius:10px;padding:12px;font-size:12px;line-height:1.5;color:#cbd5e1}
+.engine-note{margin-top:9px;font-size:11px;color:#64748b;line-height:1.45}
+@media(max-width:600px){.engine-result{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -134,6 +143,11 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 </div>
 
 
+
+<div class="card prediction-engine">
+<h2>Predicción basada en análisis histórico completo</h2>
+<div id="engine-prediction"><div class="analysis-note">Calculando señal histórica…</div></div>
+</div>
 
 <div class="card history-analysis">
 <h2>Análisis histórico completo</h2>
@@ -342,6 +356,7 @@ function render(){
  document.getElementById('stats').innerHTML=stats.map(x=>'<div class="stat"><b>'+x[1]+'</b><span>'+x[0]+'</span></div>').join('');
  renderChart('chartCW','CW');
  renderChart('chartCCW','CCW');
+ renderEnginePrediction();
  renderHistoricalAnalysis();
 }
 
@@ -415,6 +430,92 @@ function renderSignalHistory(dir,signal,label){
 function exactStreakRecord(seq, type, len){
  const m=exactStreakTransitions(seq);
  return m[type+len] || {n:0,nextW:0,nextL:0};
+}
+
+function predictionSignalStats(dir,signal){
+ const seq=getCompletedSignalSequence(dir,signal);
+ const total=seq.length;
+ if(!total)return null;
+ const wins=seq.filter(x=>x==='W').length;
+ const globalRate=100*wins/total;
+ const st=trailingStreak(seq);
+ const evidence=[];
+ let weightedSum=0, weightTotal=0;
+ // Base: rendimiento histórico completo.
+ weightedSum += globalRate*1;
+ weightTotal += 1;
+ evidence.push({label:'global',rate:globalRate,n:total,weight:1});
+ // Condición actual: qué ocurrió después de la racha exacta actual.
+ if(st.len){
+  const rec=exactStreakRecord(seq,st.type,st.len);
+  if(rec.n>=2){
+   const rate=100*rec.nextW/rec.n;
+   const w=Math.min(4,1+Math.log2(rec.n));
+   weightedSum += rate*w;
+   weightTotal += w;
+   evidence.push({label:'racha '+st.type+' × '+st.len,rate,n:rec.n,weight:w});
+  }
+ }
+ // Patrones recientes de 2, 3 y 4 resultados. Solo se usan patrones observados
+ // al menos dos veces para evitar que una coincidencia aislada domine la señal.
+ for(const len of [2,3,4]){
+  if(seq.length<=len)continue;
+  const pattern=seq.slice(-len).join('');
+  const m=patternStats(seq,len)[pattern];
+  if(m && m.n>=2){
+   const rate=100*m.nextW/m.n;
+   const w=(len-1)*Math.min(3,1+Math.log2(m.n));
+   weightedSum += rate*w;
+   weightTotal += w;
+   evidence.push({label:'patrón '+pattern,rate,n:m.n,weight:w});
+  }
+ }
+ const score=weightedSum/weightTotal;
+ // Estabilidad: penaliza una señal basada en muy pocos datos.
+ const evidenceCases=evidence.reduce((a,e)=>a+e.n,0);
+ const confidence=Math.min(100,25+Math.log10(total+1)*22+Math.min(25,evidenceCases*1.5));
+ return {dir,signal,total,wins,globalRate,st,score,confidence,evidence};
+}
+function buildHistoricalPrediction(){
+ const candidates=[];
+ for(const dir of ['CW','CCW']){
+  for(const signal of ['prediction','top','under']){
+   const r=predictionSignalStats(dir,signal);
+   if(r)candidates.push(r);
+  }
+ }
+ if(!candidates.length)return null;
+ // Se exige un mínimo de 4 evaluaciones para emitir una señal; con menos datos,
+ // la aplicación muestra que aún no hay base histórica suficiente.
+ const eligible=candidates.filter(x=>x.total>=4);
+ if(!eligible.length)return {status:'insufficient',candidates};
+ eligible.sort((a,b)=>b.score-a.score || b.globalRate-a.globalRate || b.total-a.total);
+ const best=eligible[0];
+ const second=eligible[1];
+ const gap=second?best.score-second.score:best.score;
+ // Si las señales están prácticamente empatadas, se evita presentar una falsa precisión.
+ const status=gap<2?'unclear':'signal';
+ return {status,best,second,gap,candidates:eligible};
+}
+function renderEnginePrediction(){
+ const host=document.getElementById('engine-prediction');
+ if(!host)return;
+ const r=buildHistoricalPrediction();
+ if(!r){host.innerHTML='<div class="analysis-note">Aún no hay evaluaciones históricas.</div>';return;}
+ if(r.status==='insufficient'){
+  host.innerHTML='<div class="analysis-note">Aún no hay al menos 4 evaluaciones para generar una señal basada en el histórico completo.</div>';
+  return;
+ }
+ if(r.status==='unclear'){
+  host.innerHTML=`<div class="engine-result"><div class="engine-main"><div class="eyebrow">SEÑAL HISTÓRICA</div><div class="signal">SIN SEÑAL CLARA</div></div><div class="engine-detail">Las mejores condiciones históricas están demasiado próximas entre sí (${r.gap.toFixed(1)} puntos de diferencia).<br><br>La aplicación no fuerza una elección entre CW/CCW ni entre PREDICCIÓN/TOP/UNDER cuando los datos no separan claramente las alternativas.</div></div><div class="engine-note">El motor utiliza todo el histórico disponible, rendimiento global, racha actual y patrones recientes repetidos. La puntuación es un índice comparativo del histórico, no una probabilidad matemática del próximo giro.</div>`;
+  return;
+ }
+ const labels={prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'};
+ const b=r.best;
+ const dirLabel=b.dir==='CW'?'CW':'CCW';
+ const st=b.st.len?(b.st.type==='W'?'W':'L')+' × '+b.st.len:'—';
+ const ev=b.evidence.filter(e=>e.label!=='global').slice(0,3).map(e=>`${e.label}: ${e.rate.toFixed(1)}% (n=${e.n})`).join(' · ');
+ host.innerHTML=`<div class="engine-result"><div class="engine-main"><div class="eyebrow">SEÑAL HISTÓRICA</div><div class="signal">${dirLabel} · ${labels[b.signal]}</div><div class="muted" style="margin-top:6px">Índice histórico: ${b.score.toFixed(1)} · Confianza de datos: ${b.confidence.toFixed(0)}/100</div></div><div class="engine-detail"><b>Base de la señal</b><br>Histórico completo: ${b.globalRate.toFixed(1)}% W en ${b.total} evaluaciones.<br>Racha actual: ${st}.<br>${ev||'Sin patrones repetidos suficientes.'}</div></div><div class="engine-note">La señal selecciona la combinación CW/CCW + PREDICCIÓN/TOP/UNDER con mayor índice histórico entre las alternativas disponibles. No implica que el próximo resultado tenga una probabilidad real superior; sirve como clasificación basada en los datos acumulados.</div>`;
 }
 
 function renderHistoricalAnalysis(){
