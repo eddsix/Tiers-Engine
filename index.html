@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Roulette Pocket Predictor V2.15</title>
+<title>Roulette Pocket Predictor V2.16</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1020;color:#f8fafc;font-family:Arial,sans-serif}
@@ -71,7 +71,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.15 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.16 · Ruleta europea · predicción por pockets</div></div>
 <div class="header-actions"><button class="undo" id="undo" disabled>Deshacer</button><button class="clear" id="clear">Borrar historial</button></div>
 </header>
 
@@ -117,7 +117,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 
 <div class="card prediction-engine">
 <h2>Predicción basada en análisis histórico completo</h2>
-<div id="engine-prediction"><div class="analysis-note">Calculando señal histórica…</div></div>
+</div>
 </div>
 
 <div class="card">
@@ -404,12 +404,11 @@ function render(){
  document.getElementById('stats').innerHTML=stats.map(x=>'<div class="stat"><b>'+x[1]+'</b><span>'+x[0]+'</span></div>').join('');
  renderChart('chartCW','CW');
  renderChart('chartCCW','CCW');
- renderEnginePrediction();
- renderHistoricalAnalysis();
+renderHistoricalAnalysis();
 }
 
 
-/* ===== V2.15 EXACT OUTCOME PATTERN ENGINE ===== */
+/* ===== V2.16 EXACT OUTCOME PATTERN ENGINE ===== */
 function getDirectionOutcomes(dir){
  const seq=[];
  for(let i=0;i<spins.length-1;i++){
