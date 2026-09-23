@@ -71,7 +71,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.9 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.10 · Ruleta europea · predicción por pockets</div></div>
 <button class="clear" id="clear">Borrar historial</button>
 </header>
 
@@ -385,52 +385,114 @@ function render(){
 }
 
 
-/* ===== V1.5 FULL-HISTORY PATTERN ENGINE ===== */
-function getCompletedSignalSequence(dir,signal){
+/* ===== V2.10 DIRECTION-LEVEL PATTERN ENGINE ===== */
+function getDirectionOutcomes(dir){
  const seq=[];
  for(let i=0;i<spins.length-1;i++){
-  const pred=dir==='CW'?spins[i].cw:spins[i].ccw;
-  const target=pred[signal];
+  const p=dir==='CW'?spins[i].cw:spins[i].ccw;
   const real=spins[i+1].number;
-  seq.push(isWithinPocketRange(real,target,4)?'W':'L');
+  const result=outcome(real,p);
+  seq.push({result,win:result!=='MISS',dir});
  }
  return seq;
 }
+function directionWL(seq){return seq.map(x=>x.win?'W':'L')}
 function trailingStreak(seq){
  if(!seq.length)return {type:'—',len:0};
  const type=seq[seq.length-1]; let len=1;
  for(let i=seq.length-2;i>=0&&seq[i]===type;i--)len++;
  return {type,len};
 }
-function maxStreak(seq,wanted){
- let max=0,cur=0;
- for(const x of seq){if(x===wanted){cur++;max=Math.max(max,cur)}else cur=0}
- return max;
-}
-function exactStreakTransitions(seq){
- const m={};
- for(let i=0;i<seq.length-1;i++){
-  if(seq[i]===seq[i+1])continue;
-  let start=i;
-  while(start>0&&seq[start-1]===seq[i])start--;
-  const len=i-start+1,key=seq[i]+len;
-  if(!m[key])m[key]={streak:seq[i],len,n:0,nextW:0,nextL:0};
-  m[key].n++;
-  if(seq[i+1]==='W')m[key].nextW++;else m[key].nextL++;
- }
- return m;
-}
-function patternStats(seq,len){
+function directionPatternStats(seq,len){
  const m={};
  for(let i=0;i+len<seq.length;i++){
-  const key=seq.slice(i,i+len).join('');
-  if(!m[key])m[key]={pattern:key,n:0,nextW:0,nextL:0};
-  m[key].n++;
-  if(seq[i+len]==='W')m[key].nextW++;else m[key].nextL++;
+  const pattern=seq.slice(i,i+len).map(x=>x.win?'W':'L').join('');
+  if(!m[pattern])m[pattern]={pattern,n:0,nextW:0,nextL:0,nextSignals:{PREDICCIÓN:0,TOP:0,UNDER:0,MISS:0}};
+  const x=m[pattern]; x.n++;
+  const next=seq[i+len];
+  if(next.win)x.nextW++;else x.nextL++;
+  if(x.nextSignals[next.result]!==undefined)x.nextSignals[next.result]++;
  }
  return m;
 }
-function fmtHistPct(a,b){return b?(100*a/b).toFixed(1)+'%':'—'}
+function exactDirectionStreakStats(seq){
+ const m={};
+ for(let i=0;i<seq.length-1;i++){
+  if(seq[i].win===seq[i+1].win)continue;
+  let start=i;
+  while(start>0 && seq[start-1].win===seq[i].win)start--;
+  const len=i-start+1,key=(seq[i].win?'W':'L')+len;
+  if(!m[key])m[key]={streak:seq[i].win?'W':'L',len,n:0,nextW:0,nextL:0};
+  m[key].n++;
+  if(seq[i+1].win)m[key].nextW++;else m[key].nextL++;
+ }
+ return m;
+}
+function formatSignalCounts(s){
+ return `PREDICCIÓN ${s['PREDICCIÓN']||0} · TOP ${s.TOP||0} · UNDER ${s.UNDER||0} · MISS ${s.MISS||0}`;
+}
+function directionAnalysis(dir){
+ const outcomes=getDirectionOutcomes(dir), wl=directionWL(outcomes);
+ if(wl.length<3)return null;
+ const maxLen=Math.min(8,wl.length), evidence=[];
+ for(let len=maxLen;len>=3;len--){
+  const pattern=wl.slice(-len).join('');
+  const stats=directionPatternStats(outcomes,len)[pattern];
+  if(stats && stats.n>=2){
+   const rate=100*stats.nextW/stats.n;
+   const signalEntries=Object.entries(stats.nextSignals).filter(([k])=>k!=='MISS').sort((a,b)=>b[1]-a[1]);
+   evidence.push({pattern,len,n:stats.n,nextW:stats.nextW,nextL:stats.nextL,rate,nextSignals:stats.nextSignals,signal:signalEntries[0]&&signalEntries[0][1]>0?signalEntries[0][0]:'MISS'});
+  }
+ }
+ const primary=evidence[0]||null;
+ if(!primary)return {dir,outcomes,wl,currentPattern:wl.slice(-maxLen).join(''),streak:trailingStreak(wl),evidence:[],primary:null};
+ const confidence=Math.min(100,25+primary.len*7+Math.min(40,primary.n*5));
+ return {dir,outcomes,wl,currentPattern:wl.slice(-maxLen).join(''),streak:trailingStreak(wl),evidence,primary,confidence};
+}
+function buildHistoricalPrediction(){
+ const CW=directionAnalysis('CW'), CCW=directionAnalysis('CCW');
+ if(!CW&&!CCW)return null;
+ const dirs=[CW,CCW].filter(Boolean).filter(x=>x.primary);
+ if(!dirs.length)return {CW,CCW,status:'insufficient'};
+ // Primero se compara la evidencia del patrón actual de cada dirección.
+ // La longitud aporta contexto; después importan los casos y la tasa W.
+ const ranked=[...dirs].sort((a,b)=>
+  b.primary.len-a.primary.len ||
+  b.primary.n-a.primary.n ||
+  b.primary.rate-a.primary.rate
+ );
+ const best=ranked[0], second=ranked[1];
+ let status='signal',gap=null;
+ if(second && best.primary.len===second.primary.len && best.primary.n===second.primary.n){
+  gap=Math.abs(best.primary.rate-second.primary.rate);
+  if(gap<2)status='unclear';
+ }
+ return {CW,CCW,best,second,status,gap};
+}
+function renderDirectionPredictionBlock(a){
+ if(!a)return '<section class="prediction-direction"><h4>Sin datos</h4></section>';
+ const labels=a.outcomes.map(x=>x.result);
+ const signalCounts={PREDICCIÓN:0,TOP:0,UNDER:0,MISS:0};
+ labels.forEach(x=>{if(signalCounts[x]!==undefined)signalCounts[x]++});
+ const p=a.primary;
+ const evidenceRows=a.evidence.slice(0,5).map(e=>`<div class="prediction-signal-row"><span><b>${e.pattern.split('').join(' ')}</b></span><span>n=${e.n}</span><span>W ${e.rate.toFixed(1)}%</span><span>${formatSignalCounts(e.nextSignals)}</span></div>`).join('');
+ return `<section class="prediction-direction"><h4>${a.dir==='CW'?'CW · CLOCKWISE':'CCW · COUNTERCLOCKWISE'}</h4><div class="prediction-direction-main"><b>Racha actual:</b> ${a.streak.type} × ${a.streak.len}<br><b>Patrón actual:</b> ${a.currentPattern.split('').join(' ')}<br>${p?`<b>Patrón utilizado:</b> ${p.pattern.split('').join(' ')}<br><b>Coincidencias:</b> ${p.n}<br><b>Después del patrón:</b> W ${p.rate.toFixed(1)}% · L ${(100-p.rate).toFixed(1)}%<br><b>Señal más frecuente después:</b> ${p.signal}`:'<b>Patrones:</b> sin evidencia suficiente'}</div><div class="prediction-signal-list"><div class="prediction-signal-row"><span><b>Historial de esta dirección</b></span><span>W=${a.wl.filter(x=>x==='W').length}</span><span>L=${a.wl.filter(x=>x==='L').length}</span></div>${evidenceRows}</div></section>`;
+}
+function renderEnginePrediction(){
+ const host=document.getElementById('engine-prediction'); if(!host)return;
+ const r=buildHistoricalPrediction();
+ if(!r){host.innerHTML='<div class="analysis-note">Aún no hay suficientes evaluaciones para analizar CW y CCW.</div>';return;}
+ const cw=renderDirectionPredictionBlock(r.CW), ccw=renderDirectionPredictionBlock(r.CCW);
+ if(r.status==='insufficient'){
+  host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-note">Cada dirección se analiza como una secuencia independiente de resultados W/L. Las tres señales (PREDICCIÓN, TOP y UNDER) se estudian como resultado asociado a cada giro, no como tres secuencias independientes.</div>`;return;
+ }
+ if(r.status==='unclear'){
+  host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="eyebrow">COMPARACIÓN CW / CCW</div><div class="signal">SIN SEÑAL CLARA</div></div><div class="engine-detail">Las dos direcciones tienen patrones actuales de igual longitud y evidencia similar.</div></div><div class="engine-note">La comparación se realiza entre el análisis global de CW y el análisis global de CCW.</div>`;return;
+ }
+ const b=r.best,p=b.primary;
+ host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="eyebrow">COMPARACIÓN CW / CCW</div><div class="signal">${b.dir} · ${p.signal}</div><div class="muted" style="margin-top:6px">Patrón: ${p.pattern.split('').join(' ')} · Coincidencias: ${p.n}</div></div><div class="engine-detail"><b>Dirección seleccionada por el análisis histórico:</b> ${b.dir}<br><b>Después del patrón:</b> W ${p.rate.toFixed(1)}% · L ${(100-p.rate).toFixed(1)}%<br><b>Señal más frecuente después:</b> ${p.signal}<br><br>La selección se realiza después de analizar la secuencia completa de CW y la secuencia completa de CCW, incluyendo rachas y patrones de 3 o más resultados.</div></div><div class="engine-note">CW y CCW se mantienen completamente separados. PREDICCIÓN, TOP y UNDER ya no compiten como tres secuencias independientes: se registran como el tipo de resultado que acompañó a cada W dentro de su dirección.</div>`;
+}
+
 function renderStreakTable(seq){
  const m=exactStreakTransitions(seq), rows=[];
  Object.values(m).sort((a,b)=>a.len-b.len||a.streak.localeCompare(b.streak)).forEach(x=>rows.push(`<tr><td>${x.streak==='W'?'Victorias':'Derrotas'} × ${x.len}</td><td>${x.n}</td><td>${x.nextW}</td><td>${x.nextL}</td><td>${fmtHistPct(x.nextW,x.n)}</td></tr>`));
@@ -456,135 +518,6 @@ function exactStreakRecord(seq, type, len){
  return m[type+len] || {n:0,nextW:0,nextL:0};
 }
 
-function predictionSignalStats(dir,signal){
- const seq=getCompletedSignalSequence(dir,signal);
- const total=seq.length;
- if(total<3)return null;
-
- // El motor SOLO compara sufijos exactos de la secuencia actual.
- // Ejemplo: si termina WLWLWW, busca WLWLWW; si no hay evidencia suficiente,
- // baja a LWLWW, WLWW, LWW. Nunca sustituye el patrón por otro diferente.
- const maxLen=Math.min(8,total);
- const evidence=[];
- for(let len=maxLen;len>=3;len--){
-  const pattern=seq.slice(-len).join('');
-  const stats=patternStats(seq,len)[pattern];
-  if(stats && stats.n>=2){
-   const rate=100*stats.nextW/stats.n;
-   evidence.push({
-    label:'patrón '+pattern,
-    pattern,
-    rate,
-    n:stats.n,
-    nextW:stats.nextW,
-    nextL:stats.nextL,
-    len
-   });
-  }
- }
-
- if(!evidence.length)return null;
-
- // Se usa como base el patrón exacto más largo con al menos 2 antecedentes.
- // Los patrones más cortos se muestran como contexto, pero no pueden reemplazar
- // a uno más largo que ya tenga evidencia suficiente.
- const primary=evidence[0];
- const score=primary.rate;
- const confidence=Math.min(100,20+primary.len*8+Math.min(40,primary.n*5));
-
- return {
-  dir,signal,total,score,confidence,evidence,
-  longest:primary.len,primary,
-  currentPattern:seq.slice(-maxLen).join('')
- };
-}
-
-function buildHistoricalPrediction(){
- const directions={};
- for(const dir of ['CW','CCW']){
-  const signals=[];
-  for(const signal of ['prediction','top','under']){
-   const r=predictionSignalStats(dir,signal);
-   if(r)signals.push(r);
-  }
-  if(signals.length) directions[dir]=signals;
- }
- if(!directions.CW && !directions.CCW)return null;
-
- // Cada pestaña se analiza como un bloque independiente. Dentro de cada
- // dirección se estudian PREDICCIÓN, TOP y UNDER y después se comparan CW vs CCW.
- const directionSummary={};
- for(const dir of ['CW','CCW']){
-  const list=directions[dir]||[];
-  if(!list.length)continue;
-  const sorted=[...list].sort((a,b)=>
-   b.primary.len-a.primary.len ||
-   b.primary.n-a.primary.n ||
-   b.score-a.score
-  );
-  const best=sorted[0];
-  const avg=sorted.reduce((a,x)=>a+x.score,0)/sorted.length;
-  const evidence=sorted.reduce((a,x)=>a+x.primary.n,0);
-  directionSummary[dir]={signals:sorted,best,avg,evidence};
- }
-
- const available=Object.values(directionSummary);
- if(!available.length)return null;
-
- // Comparación entre pestañas: primero la longitud del patrón exacto actual,
- // luego la cantidad de antecedentes y finalmente la frecuencia histórica W.
- const ranked=[...available].sort((a,b)=>
-  b.best.primary.len-a.best.primary.len ||
-  b.best.primary.n-a.best.primary.n ||
-  b.avg-a.avg ||
-  b.best.score-a.best.score
- );
- const bestDirection=ranked[0];
- const secondDirection=ranked[1];
- let status='signal',gap=null;
- if(secondDirection &&
-    secondDirection.best.primary.len===bestDirection.best.primary.len &&
-    secondDirection.best.primary.n===bestDirection.best.primary.n){
-  gap=Math.abs(bestDirection.avg-secondDirection.avg);
-  if(gap<2)status='unclear';
- }
- return {status,gap,directions:directionSummary,bestDirection,secondDirection};
-}
-
-function renderDirectionPredictionBlock(dir,data,labels){
- const b=data.best;
- const seq=getCompletedSignalSequence(dir,b.signal);
- const current=seq.slice(-Math.min(8,seq.length)).join(' ');
- const signals=data.signals.map(x=>{
-  const p=x.primary;
-  return `<div class="prediction-signal-row"><span><b>${labels[x.signal]}</b></span><span>Patrón: ${p.pattern.split('').join(' ')}</span><span>n=${p.n}</span><span>W ${p.rate.toFixed(1)}%</span></div>`;
- }).join('');
- return `<section class="prediction-direction"><h4>${dir==='CW'?'CW · CLOCKWISE':'CCW · COUNTERCLOCKWISE'}</h4><div class="prediction-direction-main"><b>Mejor señal de esta dirección: ${labels[b.signal]}</b><br>Patrón actual: ${current}<br>Patrón utilizado: ${b.primary.pattern.split('').join(' ')}<br>Coincidencias: ${b.primary.n}<br>Después del patrón: W ${b.primary.rate.toFixed(1)}% · L ${(100-b.primary.rate).toFixed(1)}%</div><div class="prediction-signal-list">${signals}</div></section>`;
-}
-
-function renderEnginePrediction(){
- const host=document.getElementById('engine-prediction');
- if(!host)return;
- const r=buildHistoricalPrediction();
- const labels={prediction:'PREDICCIÓN',top:'TOP',under:'UNDER'};
- if(!r){
-  host.innerHTML='<div class="analysis-note">Aún no hay suficientes evaluaciones para analizar patrones de 3 o más resultados en CW y CCW.</div>';
-  return;
- }
-
- const cw=r.directions.CW ? renderDirectionPredictionBlock('CW',r.directions.CW,labels) : '<section class="prediction-direction"><h4>CW · CLOCKWISE</h4><div class="analysis-note">Sin suficiente historial.</div></section>';
- const ccw=r.directions.CCW ? renderDirectionPredictionBlock('CCW',r.directions.CCW,labels) : '<section class="prediction-direction"><h4>CCW · COUNTERCLOCKWISE</h4><div class="analysis-note">Sin suficiente historial.</div></section>';
-
- if(r.status==='unclear'){
-  host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="eyebrow">COMPARACIÓN CW / CCW</div><div class="signal">SIN SEÑAL CLARA</div></div><div class="engine-detail">Las dos direcciones presentan evidencia histórica muy próxima con patrones de igual longitud y número de coincidencias. Diferencia entre sus medias: ${r.gap.toFixed(1)} puntos.</div></div><div class="engine-note">La predicción analiza siempre ambas direcciones. Cada dirección mantiene su propia secuencia W/L y sus propios patrones; no se mezclan las pestañas.</div>`;
-  return;
- }
-
- const d=r.bestDirection;
- const b=d.best;
- const p=b.primary;
- host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="eyebrow">COMPARACIÓN CW / CCW</div><div class="signal">${b.dir} · ${labels[b.signal]}</div><div class="muted" style="margin-top:6px">Patrón utilizado: ${p.pattern.split('').join(' ')} · Coincidencias: ${p.n}</div></div><div class="engine-detail"><b>Resultado de la comparación:</b> esta señal pertenece a ${b.dir}.<br><b>Después del patrón:</b> W ${p.rate.toFixed(1)}% · L ${(100-p.rate).toFixed(1)}%<br><br>La selección se realiza después de analizar independientemente CW y CCW y sus tres señales: PREDICCIÓN, TOP y UNDER.</div></div><div class="engine-note">El motor analiza las dos pestañas en cada actualización. Nunca mezcla las secuencias CW y CCW ni utiliza un patrón que no sea un sufijo exacto de la secuencia actual de su propia dirección.</div>`;
-}
 function renderHistoricalAnalysis(){
  const host=document.getElementById('historical-analysis'); if(!host)return;
  host.innerHTML=`<div class="analysis-grid"><section class="analysis-direction"><h3>CLOCKWISE</h3>${renderSignalHistory('CW','prediction','Predicción')}${renderSignalHistory('CW','top','TOP')}${renderSignalHistory('CW','under','UNDER')}</section><section class="analysis-direction"><h3>COUNTERCLOCKWISE</h3>${renderSignalHistory('CCW','prediction','Predicción')}${renderSignalHistory('CCW','top','TOP')}${renderSignalHistory('CCW','under','UNDER')}</section></div><div class="analysis-note">W = el siguiente resultado cayó dentro de ±4 bolsillos físicos del objetivo; L = no cayó. Las frecuencias mostradas son observaciones históricas de la aplicación y no implican que el siguiente giro tenga que repetir el patrón.</div>`;
