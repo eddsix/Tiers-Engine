@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Roulette Pocket Predictor V2.16</title>
+<title>Roulette Pocket Predictor V2.17</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1020;color:#f8fafc;font-family:Arial,sans-serif}
@@ -56,12 +56,6 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 @media(max-width:800px){.analysis-grid{grid-template-columns:1fr}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .prediction-engine{border:1px solid #3b82f6;background:#0b1220}
-.engine-result{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
-.engine-main{background:#111827;border:1px solid #2563eb;border-radius:10px;padding:14px}
-.engine-main .eyebrow{font-size:11px;color:#94a3b8}
-.engine-main .signal{font-size:28px;font-weight:800;margin-top:5px}
-.engine-detail{background:#111827;border:1px solid #263244;border-radius:10px;padding:12px;font-size:12px;line-height:1.5;color:#cbd5e1}
-.engine-note{margin-top:9px;font-size:11px;color:#64748b;line-height:1.45}
 @media(max-width:600px){.engine-result{grid-template-columns:1fr}}
 
 
@@ -71,7 +65,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <body>
 <div class="app">
 <header>
-<div><h1>Roulette Pocket Predictor</h1><div class="muted">V2.16 · Ruleta europea · predicción por pockets</div></div>
+<div><h1>Roulette Pocket Predictor</h1></div>
 <div class="header-actions"><button class="undo" id="undo" disabled>Deshacer</button><button class="clear" id="clear">Borrar historial</button></div>
 </header>
 
@@ -123,7 +117,7 @@ th{color:#94a3b8}.hit{color:#4ade80;font-weight:bold}.miss{color:#fb7185;font-we
 <div class="card">
 <h2>Predicción <span id="directionText">CW</span></h2>
 <div class="predictions">
-<div class="box main"><div class="label">PREDICCIÓN · 10 POCKETS</div><div class="value" id="prediction">—</div></div>
+<div class="box main"><div class="value" id="prediction">—</div></div>
 <div class="box top"><div class="label" id="topLabel">TOP · +5 CW</div><div class="value" id="top">—</div></div>
 <div class="box under"><div class="label" id="underLabel">UNDER · −5 CCW</div><div class="value" id="under">—</div></div><div class="muted" style="grid-column:1/-1;margin-top:2px">Acierto = resultado dentro del radio seleccionado de vecinos físicos del número objetivo. El radio se puede cambiar de 0 a 9.</div>
 </div>
@@ -404,11 +398,10 @@ function render(){
  document.getElementById('stats').innerHTML=stats.map(x=>'<div class="stat"><b>'+x[1]+'</b><span>'+x[0]+'</span></div>').join('');
  renderChart('chartCW','CW');
  renderChart('chartCCW','CCW');
-renderHistoricalAnalysis();
 }
 
 
-/* ===== V2.16 EXACT OUTCOME PATTERN ENGINE ===== */
+/* ===== V2.17 EXACT OUTCOME PATTERN ENGINE ===== */
 function getDirectionOutcomes(dir){
  const seq=[];
  for(let i=0;i<spins.length-1;i++){
@@ -550,17 +543,10 @@ function renderDirectionPredictionBlock(a){
  if(!a)return '<section class="prediction-direction"><h4>Sin datos</h4></section>';
  const p=a.primary;
  const patternText=a.currentPattern.map(x=>x).join(' → ');
- const evidenceRows=a.evidence.slice(0,5).map(e=>{
-  const next=formatSignalCounts(e.next);
-  return `<div class="prediction-signal-row"><span><b>${e.pattern.join(' → ')}</b></span><span>n=${e.n}</span><span>W ${e.winRate.toFixed(1)}%</span><span>${next}</span></div>`;
+ const evidenceRows=a.evidence.slice(0,5).map(e=>{</b></span><span>n=${e.n}</span><span>W ${e.winRate.toFixed(1)}%</span><span>${next}</span></div>`;
  }).join('');
 
- const nextText=p ? p.nextEntries.map(([label,n])=>`${label} ${n} (${(100*n/p.n).toFixed(1)}%)`).join(' · ') : '—';
-
- return `<section class="prediction-direction">
- <h4>${a.dir==='CW'?'CW · CLOCKWISE':'CCW · COUNTERCLOCKWISE'}</h4>
- <div class="prediction-direction-main">
-  <b>Racha actual:</b> ${a.streak.type} × ${a.streak.len}<br>
+ const nextText=p ? p.nextEntries.map(([label,n])=>`${label} ${n} (${(100*n/p.n).toFixed(1)}%)`).join(' · ') : '—';</h4> × ${a.streak.len}<br>
   <b>Patrón actual:</b> ${patternText}<br>
   ${p
    ? `<b>Patrón utilizado:</b> ${p.pattern.join(' → ')}<br>
@@ -570,26 +556,21 @@ function renderDirectionPredictionBlock(a){
       <b>Resultado más frecuente:</b> ${p.dominant} (${p.dominantRate.toFixed(1)}%)`
    : '<b>Patrones:</b> sin evidencia suficiente'}
  </div>
- ${renderGroupStats(a.dir)}
- <div class="prediction-signal-list">
-  <div class="prediction-signal-row"><span><b>Historial exacto de esta dirección</b></span><span>Casos=${a.outcomes.length}</span><span>—</span><span>—</span></div>
+ ${renderGroupStats(a.dir)}</span><span>—</span><span>—</span></div>
   ${evidenceRows}
  </div>
  </section>`;
 }
 function renderEnginePrediction(){
- const host=document.getElementById('engine-prediction'); if(!host)return;
- const r=buildHistoricalPrediction();
- if(!r){host.innerHTML='<div class="analysis-note">Aún no hay suficientes evaluaciones para analizar CW y CCW.</div>';return;}
  const cw=renderDirectionPredictionBlock(r.CW), ccw=renderDirectionPredictionBlock(r.CCW);
  if(r.status==='insufficient'){
   host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-note">Cada dirección se analiza como una secuencia independiente de resultados exactos: CWPREDICCION, CWTOP, CWUNDER, CWLOSE (y sus equivalentes CCW). Los patrones conservan el tipo exacto de resultado.</div>`;return;
  }
  if(r.status==='unclear'){
-  host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="eyebrow">COMPARACIÓN CW / CCW</div><div class="signal">SIN SEÑAL CLARA</div></div><div class="engine-detail">Las dos direcciones tienen patrones actuales de igual longitud y evidencia similar.</div></div><div class="engine-note">La comparación se realiza entre el análisis global de CW y el análisis global de CCW.</div>`;return;
+  host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="signal">SIN SEÑAL CLARA</div></div><div class="engine-detail">Las dos direcciones tienen patrones actuales de igual longitud y evidencia similar.</div></div><div class="engine-note">La comparación se realiza entre el análisis global de CW y el análisis global de CCW.</div>`;return;
  }
  const b=r.best,p=b.primary;
- host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="eyebrow">COMPARACIÓN CW / CCW</div><div class="signal">${b.dir} · ${p.dominant || '—'}</div><div class="muted" style="margin-top:6px">Patrón: ${p.pattern.join(' → ')} · Coincidencias: ${p.n}</div></div><div class="engine-detail"><b>Dirección seleccionada por el análisis histórico:</b> ${b.dir}<br><b>Después del patrón:</b> W ${p.winRate.toFixed(1)}% · L ${(100-p.winRate).toFixed(1)}%<br><b>Señal más frecuente después:</b> ${p.dominant || '—'}<br><br>La selección se realiza después de analizar la secuencia completa de CW y la secuencia completa de CCW, incluyendo rachas y patrones exactos de 3 o más resultados.</div></div><div class="engine-note">CW y CCW se mantienen completamente separados. Los patrones no se reducen a W/L: CWTOP → CWTOP → CWUNDER solo coincide con esa misma secuencia exacta. Si un patrón largo no se repite, el motor retrocede progresivamente hasta el patrón exacto de 3 resultados. Una única coincidencia histórica se muestra como evidencia, pero se distingue de una señal con múltiples casos.</div>`;
+ host.innerHTML=`<div class="prediction-both-directions">${cw}${ccw}</div><div class="engine-result"><div class="engine-main"><div class="signal">${b.dir} · ${p.dominant || '—'}</div><div class="muted" style="margin-top:6px">Patrón: ${p.pattern.join(' → ')} · Coincidencias: ${p.n}</div></div><div class="engine-detail"><b>Dirección seleccionada por el análisis histórico:</b> ${b.dir}<br><b>Después del patrón:</b> W ${p.winRate.toFixed(1)}% · L ${(100-p.winRate).toFixed(1)}%<br><b>Señal más frecuente después:</b> ${p.dominant || '—'}<br><br>La selección se realiza después de analizar la secuencia completa de CW y la secuencia completa de CCW, incluyendo rachas y patrones exactos de 3 o más resultados.</div></div><div class="engine-note">CW y CCW se mantienen completamente separados. Los patrones no se reducen a W/L: CWTOP → CWTOP → CWUNDER solo coincide con esa misma secuencia exacta. Si un patrón largo no se repite, el motor retrocede progresivamente hasta el patrón exacto de 3 resultados. Una única coincidencia histórica se muestra como evidencia, pero se distingue de una señal con múltiples casos.</div>`;
 }
 
 function renderStreakTable(seq){
