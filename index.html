@@ -59,6 +59,18 @@ td:last-child,th:last-child{text-align:right}
 .num-tag.black{color:#fff;background:#080c13;border:1px solid #39465d}
 .bar-track{height:6px;background:#253149;border-radius:99px;overflow:hidden;min-width:52px}
 .bar{height:100%;background:linear-gradient(90deg,#608bff,#79c0ff);border-radius:99px}
+
+.wheel-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.wheel-wrap{position:relative;width:min(100%,420px);margin:0 auto;aspect-ratio:1}
+.wheel-wrap svg{display:block;width:100%;height:100%;overflow:visible}
+.wheel-legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:11px}
+.legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.legend-dot.hit{background:#f4c969}.legend-dot.ref{background:#78a8ff}.legend-dot.none{background:#64748b}
+.wheel-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.wheel-summary .metric strong{font-size:18px}
+.wheel-empty{max-width:440px;margin:0 auto}
+@media(max-width:420px){.wheel-summary{grid-template-columns:1fr 1fr}.wheel-wrap{width:100%}}
+
 .distribution{display:grid;gap:8px}
 .dist-row{display:grid;grid-template-columns:30px 1fr 42px;align-items:center;gap:8px;font-size:12px}
 .dist-row .bar-track{height:7px}
@@ -110,6 +122,23 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
         </div>
         <div id="directSummary" class="metrics" style="margin-top:0;margin-bottom:15px"></div>
         <div id="directResults"><div class="empty">Introduce varios resultados para comenzar el análisis.</div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div><div class="kicker">Mapa visual</div><h2 style="margin-top:4px">Ruleta física europea</h2>
+          <p class="help">Resalta en el orden real de la rueda los números que aparecieron inmediatamente después del último resultado introducido.</p></div>
+        </div>
+        <div class="wheel-layout">
+          <div id="wheelMap" class="wheel-wrap"><div class="empty wheel-empty">Introduce resultados para generar el mapa de la ruleta.</div></div>
+          <div class="wheel-legend">
+            <span><i class="legend-dot ref"></i>Último número (referencia)</span>
+            <span><i class="legend-dot hit"></i>Salió después</span>
+            <span><i class="legend-dot none"></i>Sin transición registrada</span>
+          </div>
+          <div id="wheelSummary" class="wheel-summary"></div>
+          <p class="note">El mapa usa el orden físico de una ruleta europea: 0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26. El color dorado indica los resultados siguientes observados en tu histórico; no representa una predicción garantizada.</p>
+        </div>
       </section>
 
       <section class="card">
@@ -241,6 +270,57 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
       <div class="metric"><span>Siguientes distintos</span><strong>${sortedCounts(counts).length}</strong></div>`;
     $("directResults").innerHTML = renderResultTable(counts,matches,"No hay transiciones anteriores suficientes para este número. Cada aparición necesita tener un resultado posterior.");
   }
+  function renderWheelMap() {
+    const wheelOrder = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+    const target = history.length ? history[history.length - 1] : null;
+    if (target === null) {
+      $("wheelMap").innerHTML = '<div class="empty wheel-empty">Introduce resultados para generar el mapa de la ruleta.</div>';
+      $("wheelSummary").innerHTML = "";
+      return;
+    }
+    const {counts,matches} = transitionsFor([target]);
+    const totalObserved = counts.reduce((a,b)=>a+b,0);
+    const cx = 200, cy = 200, outerR = 178, innerR = 119, labelR = 148;
+    const step = (Math.PI * 2) / wheelOrder.length;
+    const polar = (r,a) => [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+    const pathFor = (r1,r2,a1,a2) => {
+      const p1=polar(r1,a1), p2=polar(r1,a2), p3=polar(r2,a2), p4=polar(r2,a1);
+      const large = (a2-a1) > Math.PI ? 1 : 0;
+      return `M ${p1[0]} ${p1[1]} A ${r1} ${r1} 0 ${large} 1 ${p2[0]} ${p2[1]} L ${p3[0]} ${p3[1]} A ${r2} ${r2} 0 ${large} 0 ${p4[0]} ${p4[1]} Z`;
+    };
+    let svg = `<svg viewBox="0 0 400 400" role="img" aria-label="Mapa de la ruleta europea con resultados siguientes resaltados"><circle cx="200" cy="200" r="185" fill="#0a101c" stroke="#48566e" stroke-width="2"/><circle cx="200" cy="200" r="115" fill="#122b25" stroke="#8e9c79" stroke-width="2"/>`;
+    wheelOrder.forEach((n,i) => {
+      const a1 = -Math.PI/2 + i*step;
+      const a2 = a1 + step;
+      const mid = (a1+a2)/2;
+      const isRef = n === target;
+      const isHit = counts[n] > 0;
+      const fill = isRef ? "#315fd4" : isHit ? "#b68a22" : (n===0 || !RED.has(n) ? "#171d28" : "#a62d3a");
+      const stroke = isRef ? "#9fc1ff" : isHit ? "#ffe08a" : "#69758a";
+      const sw = isRef || isHit ? 2.8 : 1;
+      svg += `<path d="${pathFor(outerR,innerR,a1,a2)}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      const [tx,ty] = polar(labelR,mid);
+      const labelFill = (isRef || isHit) ? "#ffffff" : "#f3f6fc";
+      const fontSize = n > 9 ? 10.5 : 12;
+      svg += `<text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="central" fill="${labelFill}" font-size="${fontSize}" font-weight="800">${n}</text>`;
+      if (isHit) {
+        const [bx,by] = polar(103,mid);
+        svg += `<circle cx="${bx}" cy="${by}" r="${Math.min(11,7+Math.log2(counts[n]+1))}" fill="#f4c969" stroke="#3b2d0a" stroke-width="1.2"/><text x="${bx}" y="${by+0.5}" text-anchor="middle" dominant-baseline="central" fill="#17130a" font-size="9" font-weight="900">${counts[n]}</text>`;
+      }
+    });
+    svg += `<circle cx="200" cy="200" r="90" fill="#122b25" stroke="#536c5b" stroke-width="1.5"/>`;
+    svg += `<text x="200" y="177" text-anchor="middle" fill="#9dcab2" font-size="10" font-weight="700" letter-spacing="1.2">NÚMERO ACTUAL</text>`;
+    svg += `<text x="200" y="214" text-anchor="middle" fill="#ffffff" font-size="36" font-weight="850">${target}</text>`;
+    svg += `<text x="200" y="236" text-anchor="middle" fill="#b7c9bf" font-size="10">${matches} transiciones previas</text>`;
+    svg += `</svg>`;
+    $("wheelMap").innerHTML = svg;
+    const hitNumbers = counts.filter(c=>c>0).length;
+    $("wheelSummary").innerHTML = `
+      <div class="metric"><span>Número de referencia</span><strong>${target}</strong></div>
+      <div class="metric"><span>Números resaltados</span><strong>${hitNumbers}</strong></div>
+      <div class="metric"><span>Transiciones registradas</span><strong>${totalObserved}</strong></div>`;
+  }
+
   function renderSequence() {
     const len = Number($("sequenceLength").value || 2);
     const seq = history.slice(-len);
@@ -301,6 +381,7 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
     renderHistory();
     renderFrequency();
     renderDirect();
+    renderWheelMap();
     renderSequence();
   }
   $("undoBtn").addEventListener("click",()=>{if(!history.length)return;history.pop();saveHistory();render();});
