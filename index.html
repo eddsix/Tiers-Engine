@@ -71,6 +71,20 @@ td:last-child,th:last-child{text-align:right}
 .wheel-empty{max-width:440px;margin:0 auto}
 @media(max-width:420px){.wheel-summary{grid-template-columns:1fr 1fr}.wheel-wrap{width:100%}}
 
+
+.import-textarea{display:block;width:100%;min-height:112px;resize:vertical;padding:12px;border-radius:12px;border:1px solid #34435d;background:#0b1322;color:var(--text);font:13px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;outline:none}
+.import-textarea:focus{border-color:#77a8ff;box-shadow:0 0 0 2px #77a8ff20}
+.import-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.import-status{border:1px solid #34435d;background:#0d1422;border-radius:12px;padding:11px;font-size:12px}
+.import-status.good{border-color:#2b6c52;background:#10271f;color:#9be5bd}
+.import-status.bad{border-color:#7b3542;background:#2a1720;color:#ffabb4}
+.preview-numbers{display:flex;gap:5px;flex-wrap:wrap;max-height:160px;overflow:auto;padding:2px}
+.preview-chip{min-width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:800;border:1px solid #36445d;background:#121c2e}
+.preview-chip.red{color:#fff;background:#a62d3a;border-color:#d04b59}
+.preview-chip.black{color:#fff;background:#080c13;border-color:#4b5870}
+.preview-chip.invalid{color:#ffb0b8;background:#351721;border-color:#a13b4b;text-decoration:line-through}
+@media(max-width:420px){.import-stats{grid-template-columns:1fr 1fr}.import-stats .import-status:last-child{grid-column:1/-1}}
+
 .distribution{display:grid;gap:8px}
 .dist-row{display:grid;grid-template-columns:30px 1fr 42px;align-items:center;gap:8px;font-size:12px}
 .dist-row .bar-track{height:7px}
@@ -113,6 +127,8 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
         <p class="note" style="margin:12px 0 0">Los números se guardan en este navegador automáticamente. Si borras los datos del navegador o cambias de dispositivo, el histórico local puede perderse.</p>
       </section>
 
+
+
       <section class="card">
         <div class="card-head"><div><div class="kicker">Análisis A · Transición directa</div><h2 style="margin-top:4px">¿Qué sale después del último número?</h2><p class="help">Toma automáticamente el último resultado que introduzcas y busca qué números salieron después de sus apariciones anteriores.</p></div></div>
         <div id="directReference" class="toolbar" style="margin-bottom:13px">
@@ -150,6 +166,31 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
         <div id="currentSequence" style="margin-bottom:13px"></div>
         <div id="sequenceSummary" class="metrics" style="margin-top:0;margin-bottom:15px"></div>
         <div id="sequenceResults"><div class="empty">El análisis aparecerá cuando haya una secuencia suficiente.</div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div><div class="kicker">Importación de histórico</div><h2 style="margin-top:4px">Pegar resultados reales</h2>
+          <p class="help">Pega los números en orden cronológico, del más antiguo al más reciente. Puedes separarlos por espacios, comas, punto y coma o saltos de línea.</p></div>
+        </div>
+        <label for="importInput" class="help" style="display:block;margin-bottom:7px">Lista de resultados (0–36)</label>
+        <textarea id="importInput" class="import-textarea" placeholder="Ejemplo: 17, 4, 22, 17, 9&#10;31 0 12 5 24" spellcheck="false"></textarea>
+        <div class="actions">
+          <button class="btn primary" id="previewImportBtn">Validar y mostrar vista previa</button>
+          <button class="btn" id="resetImportBtn">Limpiar texto</button>
+        </div>
+        <div id="importFeedback" class="help" aria-live="polite" style="margin-top:12px">Todavía no hay una lista preparada para importar.</div>
+        <div id="importPreviewArea" style="display:none;margin-top:12px">
+          <div id="importStats" class="import-stats"></div>
+          <h3 style="margin-top:14px">Vista previa de los resultados</h3>
+          <div id="importPreview" class="preview-numbers"></div>
+          <div id="importErrors" style="margin-top:10px"></div>
+          <div class="actions">
+            <button class="btn primary" id="confirmImportBtn" disabled>Añadir al histórico</button>
+            <button class="btn" id="cancelImportBtn">Cancelar vista previa</button>
+          </div>
+          <p class="note" style="margin-top:10px">Los resultados válidos se añadirán al final del histórico actual. El orden que pegues se conservará y todas las estadísticas se recalcularán.</p>
+        </div>
       </section>
     </div>
 
@@ -215,6 +256,78 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
     }
   }
   function numberTag(n) { return `<span class="num-tag ${tagClass(n)}">${n}</span>`; }
+  let pendingImport = null;
+  function parseImportText(raw) {
+    // Accept numbers separated by whitespace, commas, semicolons, pipes, or line breaks.
+    // Reject other tokens rather than silently treating them as valid results.
+    const trimmed = raw.trim();
+    if (!trimmed) return {tokens:[], valid:[], invalid:[], empty:true};
+    const tokens = trimmed.split(/[\s,;|]+/).filter(Boolean);
+    const valid = [], invalid = [];
+    tokens.forEach((token,index) => {
+      if (/^\d+$/.test(token)) {
+        const n = Number(token);
+        if (n >= 0 && n <= 36) valid.push({n, token, index});
+        else invalid.push({token,index,reason:"fuera de 0–36"});
+      } else {
+        invalid.push({token,index,reason:"no es un entero válido"});
+      }
+    });
+    return {tokens,valid,invalid,empty:false};
+  }
+  function renderImportPreview() {
+    const parsed = pendingImport;
+    $("importPreviewArea").style.display = "block";
+    $("importStats").innerHTML = `
+      <div class="import-status"><div class="help">Elementos detectados</div><strong>${parsed.tokens.length}</strong></div>
+      <div class="import-status good"><div>Resultados válidos</div><strong>${parsed.valid.length}</strong></div>
+      <div class="import-status ${parsed.invalid.length ? "bad" : "good"}"><div>Elementos incorrectos</div><strong>${parsed.invalid.length}</strong></div>`;
+    $("importPreview").innerHTML = parsed.tokens.map((token,index) => {
+      const ok = parsed.valid.find(x=>x.index===index);
+      if (!ok) return `<span class="preview-chip invalid" title="Elemento no válido: ${escapeHtml(token)}">${escapeHtml(token.slice(0,8))}</span>`;
+      return `<span class="preview-chip ${tagClass(ok.n)}" title="Resultado ${ok.n}">${ok.n}</span>`;
+    }).join("");
+    $("importErrors").innerHTML = parsed.invalid.length
+      ? `<div class="import-status bad"><strong>Revisa los elementos marcados.</strong><div style="margin-top:5px">No se importará nada mientras haya valores incorrectos. Corrige el texto y vuelve a validar.</div><div style="margin-top:6px">${parsed.invalid.slice(0,12).map(x=>`Elemento ${x.index+1}: <strong>${escapeHtml(x.token)}</strong> (${x.reason})`).join("<br>")}${parsed.invalid.length>12?`<br>… y ${parsed.invalid.length-12} más.`:""}</div></div>`
+      : '<div class="import-status good">Todos los valores son enteros válidos entre 0 y 36. La importación añadirá estos resultados al final del histórico actual.</div>';
+    $("confirmImportBtn").disabled = parsed.valid.length === 0 || parsed.invalid.length > 0;
+    $("importFeedback").textContent = parsed.invalid.length
+      ? "La lista contiene elementos incorrectos. Corrígelos antes de importar."
+      : parsed.valid.length ? "Vista previa preparada. Confirma para añadir los resultados." : "No se encontraron resultados para importar.";
+  }
+  function clearImportPreview(clearText=false) {
+    pendingImport = null;
+    $("importPreviewArea").style.display = "none";
+    $("importFeedback").textContent = "Vista previa cancelada. El histórico no se ha modificado.";
+    if (clearText) $("importInput").value = "";
+  }
+  function initImportControls() {
+    $("previewImportBtn").addEventListener("click", () => {
+      const parsed = parseImportText($("importInput").value);
+      if (parsed.empty) {
+        pendingImport = null;
+        $("importPreviewArea").style.display = "none";
+        $("importFeedback").textContent = "Pega primero una lista de resultados.";
+        return;
+      }
+      pendingImport = parsed;
+      renderImportPreview();
+    });
+    $("resetImportBtn").addEventListener("click", () => clearImportPreview(true));
+    $("cancelImportBtn").addEventListener("click", () => clearImportPreview(false));
+    $("confirmImportBtn").addEventListener("click", () => {
+      if (!pendingImport || pendingImport.invalid.length || !pendingImport.valid.length) return;
+      const newResults = pendingImport.valid.map(x=>x.n);
+      history.push(...newResults);
+      const saved = saveHistory();
+      render();
+      $("importFeedback").textContent = `Se añadieron ${newResults.length} resultados al final del histórico${saved ? " y se guardaron automáticamente." : ". Comprueba el almacenamiento del navegador."}`;
+      $("importPreviewArea").style.display = "none";
+      $("importInput").value = "";
+      pendingImport = null;
+    });
+  }
+
   function renderNumberGrid() {
     $("numberGrid").innerHTML = Array.from({length:37},(_,n) =>
       `<button type="button" class="num-btn ${colorClass(n)}" data-number="${n}" aria-label="Añadir resultado ${n}">${n}</button>`
@@ -394,6 +507,7 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
   $("sequenceLength").addEventListener("change",renderSequence);
   $("freqLimit").addEventListener("change",renderFrequency);
   renderNumberGrid();
+  initImportControls();
   render();
 })();
 </script>
