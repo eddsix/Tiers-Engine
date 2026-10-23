@@ -90,6 +90,20 @@ td:last-child,th:last-child{text-align:right}
 .dist-row .bar-track{height:7px}
 .empty{padding:20px 10px;text-align:center;color:var(--muted);font-size:12px;border:1px dashed #34425b;border-radius:12px}
 
+    
+    .wl-tracker{margin-top:14px;padding:12px;border:1px solid #29364d;border-radius:13px;background:#0d1422}
+    .wl-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+    .wl-options{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .wl-options label{font-size:11px;color:var(--muted)}
+    .wl-strip{display:flex;gap:5px;flex-wrap:wrap;align-items:center;min-height:30px}
+    .wl-chip{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;font-weight:900;font-size:12px;border:1px solid}
+    .wl-chip.win{color:#9be5bd;background:#10271f;border-color:#2b6c52}
+    .wl-chip.loss{color:#ffabb4;background:#2a1720;border-color:#7b3542}
+    .wl-empty{font-size:11px;color:var(--muted)}
+    .chronology-list{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .chronology-item{display:inline-flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid #34425b;background:#0d1422;border-radius:9px;font-size:11px}
+    .chronology-index{color:var(--muted);font-size:10px}
+
     .quick-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
     .quick-summary-item{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;min-width:0}
     .quick-summary-title{font-size:11px;color:var(--muted);font-weight:750;margin-bottom:8px}
@@ -135,6 +149,14 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
           <button class="btn danger" id="clearBtn">Borrar histórico</button>
         </div>
         <p class="note" style="margin:12px 0 0">Los números se guardan en este navegador automáticamente. Si borras los datos del navegador o cambias de dispositivo, el histórico local puede perderse.</p>
+        <div class="wl-tracker" aria-live="polite">
+          <div class="wl-head">
+            <div><h3 style="margin:0">Seguimiento de apuestas · W/L</h3><div class="help">Vecinos físicos del número de referencia; se evalúa el resultado siguiente.</div></div>
+            <div class="wl-options"><label for="neighborCount">Vecinos por lado</label><select id="neighborCount" aria-label="Vecinos por cada lado"></select></div>
+          </div>
+          <div id="wlResults" class="wl-strip"><span class="wl-empty">Añade al menos dos resultados para comenzar.</span></div>
+          <p class="note" style="margin:8px 0 0">Orden cronológico: más antiguo → más reciente. W = ganada; L = perdida. La última tirada queda pendiente hasta que se introduzca el resultado siguiente.</p>
+        </div>
       </section>
 
 
@@ -255,6 +277,7 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
   // Rojo en la ruleta europea: 1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36.
   // Se representa el 0 en negro, tal como se solicita para esta interfaz.
   const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+  const WHEEL_ORDER = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
   let history = loadHistory();
   const $ = id => document.getElementById(id);
   const colorClass = n => n === 0 ? "zero" : RED.has(n) ? "red" : "black";
@@ -406,13 +429,25 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
       return `<div class="quick-summary-item"><div class="quick-summary-title">${config.title}</div>${sequenceLabel}${body}</div>`;
     }).join("");
   }
-  function renderResultTable(counts, matches, emptyText) {
-    const rows = sortedCounts(counts);
-    if (!matches || !rows.length) return `<div class="empty">${emptyText}</div>`;
-    const max = rows[0].count;
-    return `<div class="table-wrap"><table><thead><tr><th>Siguiente</th><th>Veces</th><th>Frecuencia</th><th>Distribución</th></tr></thead><tbody>${
-      rows.map(x=>`<tr><td>${numberTag(x.n)}</td><td>${x.count}</td><td>${pct(x.count,matches)}</td><td><div class="bar-track"><div class="bar" style="width:${100*x.count/max}%"></div></div></td></tr>`).join("")
-    }</tbody></table></div>`;
+  function matchingTransitionsInOrder(targetSequence) {
+    const len = targetSequence.length;
+    const results = [];
+    for (let i = 0; i + len < history.length; i++) {
+      let same = true;
+      for (let j = 0; j < len; j++) {
+        if (history[i + j] !== targetSequence[j]) { same = false; break; }
+      }
+      if (same) results.push({n: history[i + len], position: i + len + 1});
+    }
+    return results;
+  }
+  function renderResultTable(counts, matches, emptyText, targetSequence) {
+    const ordered = matchingTransitionsInOrder(targetSequence);
+    if (!matches || !ordered.length) return `<div class="empty">${emptyText}</div>`;
+    return `<div class="help" style="margin:0 0 8px">Resultados siguientes en orden de aparición, del más antiguo al más reciente. El último aparece al final.</div>
+      <div class="chronology-list">${ordered.map((item, i) =>
+        `<span class="chronology-item" title="Posición ${item.position} del histórico"><span class="chronology-index">${i+1}.</span>${numberTag(item.n)}</span>`
+      ).join("")}</div>`;
   }
   function renderDirect() {
     const target = history.length ? history[history.length - 1] : null;
@@ -432,7 +467,7 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
       <div class="metric"><span>Apariciones</span><strong>${occurrences}</strong></div>
       <div class="metric"><span>Con resultado posterior</span><strong>${matches}</strong></div>
       <div class="metric"><span>Siguientes distintos</span><strong>${sortedCounts(counts).length}</strong></div>`;
-    $("directResults").innerHTML = renderResultTable(counts,matches,"No hay transiciones anteriores suficientes para este número. Cada aparición necesita tener un resultado posterior.");
+    $("directResults").innerHTML = renderResultTable(counts,matches,"No hay transiciones anteriores suficientes para este número. Cada aparición necesita tener un resultado posterior.",[target]);
   }
   function renderWheelMap() {
     const wheelOrder = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
@@ -504,7 +539,7 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
       <div class="metric"><span>Coincidencias</span><strong>${exactMatches}</strong></div>
       <div class="metric"><span>Con resultado posterior</span><strong>${matches}</strong></div>
       <div class="metric"><span>Siguientes distintos</span><strong>${sortedCounts(counts).length}</strong></div>`;
-    $("sequenceResults").innerHTML = renderResultTable(counts,matches,"Esta secuencia no tiene coincidencias históricas con un resultado posterior. A medida que introduzcas más datos, se podrá analizar.");
+    $("sequenceResults").innerHTML = renderResultTable(counts,matches,"Esta secuencia no tiene coincidencias históricas con un resultado posterior. A medida que introduzcas más datos, se podrá analizar.",seq);
   }
   function renderFrequency() {
     const counts = Array(37).fill(0);
@@ -529,6 +564,39 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
     const rows = history.slice().reverse().map((n,i)=>`<tr><td>${history.length-i}</td><td>${numberTag(n)}</td><td>${i===0?"Último introducido":"—"}</td></tr>`).join("");
     $("fullHistory").innerHTML = `<table><thead><tr><th>#</th><th>Resultado</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
+  function initNeighborSelector() {
+    $("neighborCount").innerHTML = Array.from({length:7}, (_, i) =>
+      `<option value="${i+1}" ${i===1 ? "selected" : ""}>${i+1}</option>`
+    ).join("");
+    $("neighborCount").addEventListener("change", renderWL);
+  }
+  function getWLHistory() {
+    const neighbors = Number($("neighborCount").value || 2);
+    const outcomes = [];
+    for (let i = 0; i + 1 < history.length; i++) {
+      const reference = history[i];
+      const actualNext = history[i + 1];
+      const wheelIndex = WHEEL_ORDER.indexOf(reference);
+      const bets = new Set();
+      for (let offset = -neighbors; offset <= neighbors; offset++) {
+        bets.add(WHEEL_ORDER[(wheelIndex + offset + WHEEL_ORDER.length) % WHEEL_ORDER.length]);
+      }
+      outcomes.push({result: bets.has(actualNext) ? "W" : "L", reference, actualNext});
+    }
+    return outcomes;
+  }
+  function renderWL() {
+    const outcomes = getWLHistory();
+    const shown = outcomes.slice(-30);
+    if (!shown.length) {
+      $("wlResults").innerHTML = '<span class="wl-empty">Añade al menos dos resultados para comenzar.</span>';
+      return;
+    }
+    $("wlResults").innerHTML = shown.map((item, i) =>
+      `<span class="wl-chip ${item.result === "W" ? "win" : "loss"}" title="Referencia ${item.reference}; siguiente resultado ${item.actualNext}; ${item.result === "W" ? "ganada" : "perdida"}">${item.result}</span>`
+    ).join("");
+  }
+
   function renderOverview() {
     const last = history[history.length-1];
     $("lastBall").className = "ball" + (last===undefined ? "" : " " + (RED.has(last)?"red":"black"));
@@ -542,6 +610,7 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
   }
   function render() {
     renderOverview();
+    renderWL();
     renderHistory();
     renderFrequency();
     renderQuickSummary();
@@ -559,6 +628,7 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
   $("sequenceLength").addEventListener("change",renderSequence);
   $("freqLimit").addEventListener("change",renderFrequency);
   renderNumberGrid();
+  initNeighborSelector();
   initImportControls();
   render();
 })();
