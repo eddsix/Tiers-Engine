@@ -151,11 +151,11 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
         <p class="note" style="margin:12px 0 0">Los números se guardan en este navegador automáticamente. Si borras los datos del navegador o cambias de dispositivo, el histórico local puede perderse.</p>
         <div class="wl-tracker" aria-live="polite">
           <div class="wl-head">
-            <div><h3 style="margin:0">Seguimiento de apuestas · W/L</h3><div class="help">Vecinos físicos del número de referencia; se evalúa el resultado siguiente.</div></div>
+            <div><h3 style="margin:0">Seguimiento de apuestas · W/L</h3><div class="help">Apuesta a los 3 números más frecuentes históricamente después de la referencia, con vecinos físicos alrededor de cada uno.</div></div>
             <div class="wl-options"><label for="neighborCount">Vecinos por lado</label><select id="neighborCount" aria-label="Vecinos por cada lado"></select></div>
           </div>
           <div id="wlResults" class="wl-strip"><span class="wl-empty">Añade al menos dos resultados para comenzar.</span></div>
-          <p class="note" style="margin:8px 0 0">Orden cronológico: más antiguo → más reciente. W = ganada; L = perdida. La última tirada queda pendiente hasta que se introduzca el resultado siguiente.</p>
+          <p class="note" style="margin:8px 0 0">Orden cronológico: más antiguo → más reciente. W = ganada; L = perdida. Cada apuesta usa solo datos históricos disponibles antes de esa tirada; se omiten rondas sin base histórica previa. La última tirada queda pendiente hasta que se introduzca el resultado siguiente.</p>
         </div>
       </section>
 
@@ -570,18 +570,31 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
     ).join("");
     $("neighborCount").addEventListener("change", renderWL);
   }
+  function topThreeFollowing(reference, historyEndExclusive) {
+    // Solo utiliza transiciones completamente observadas antes del momento de la apuesta.
+    const counts = Array(37).fill(0);
+    for (let j = 0; j + 1 < historyEndExclusive; j++) {
+      if (history[j] === reference) counts[history[j + 1]]++;
+    }
+    return sortedCounts(counts).slice(0, 3);
+  }
   function getWLHistory() {
     const neighbors = Number($("neighborCount").value || 2);
     const outcomes = [];
     for (let i = 0; i + 1 < history.length; i++) {
       const reference = history[i];
       const actualNext = history[i + 1];
-      const wheelIndex = WHEEL_ORDER.indexOf(reference);
+      // En la tirada i, solo se consideran datos que ya existían antes de esa tirada.
+      const top = topThreeFollowing(reference, i);
+      if (!top.length) continue; // Aún no existe base histórica para recomendar una apuesta.
       const bets = new Set();
-      for (let offset = -neighbors; offset <= neighbors; offset++) {
-        bets.add(WHEEL_ORDER[(wheelIndex + offset + WHEEL_ORDER.length) % WHEEL_ORDER.length]);
+      for (const item of top) {
+        const wheelIndex = WHEEL_ORDER.indexOf(item.n);
+        for (let offset = -neighbors; offset <= neighbors; offset++) {
+          bets.add(WHEEL_ORDER[(wheelIndex + offset + WHEEL_ORDER.length) % WHEEL_ORDER.length]);
+        }
       }
-      outcomes.push({result: bets.has(actualNext) ? "W" : "L", reference, actualNext});
+      outcomes.push({result: bets.has(actualNext) ? "W" : "L", reference, actualNext, picks: top.map(x => x.n), betCount: bets.size});
     }
     return outcomes;
   }
@@ -589,11 +602,11 @@ footer{text-align:center;color:#6f7f99;font-size:10px;padding:22px 0 0}
     const outcomes = getWLHistory();
     const shown = outcomes.slice(-30);
     if (!shown.length) {
-      $("wlResults").innerHTML = '<span class="wl-empty">Añade al menos dos resultados para comenzar.</span>';
+      $("wlResults").innerHTML = '<span class="wl-empty">Todavía no hay datos históricos anteriores suficientes para calcular una apuesta. Se necesitan repeticiones previas del número de referencia.</span>';
       return;
     }
-    $("wlResults").innerHTML = shown.map((item, i) =>
-      `<span class="wl-chip ${item.result === "W" ? "win" : "loss"}" title="Referencia ${item.reference}; siguiente resultado ${item.actualNext}; ${item.result === "W" ? "ganada" : "perdida"}">${item.result}</span>`
+    $("wlResults").innerHTML = shown.map(item =>
+      `<span class="wl-chip ${item.result === "W" ? "win" : "loss"}" title="Referencia ${item.reference}; top 3 por frecuencia histórica: ${item.picks.join(", ")}; cobertura total con vecinos: ${item.betCount} números; resultado real: ${item.actualNext}; ${item.result === "W" ? "ganada" : "perdida"}">${item.result}</span>`
     ).join("");
   }
 
